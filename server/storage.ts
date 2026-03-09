@@ -1,38 +1,432 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { eq, desc, asc, and, sql } from "drizzle-orm";
+import {
+  userProfile, races, quizQuestions, quizAttempts,
+  forumPosts, forumComments, articles, articleComments, novelProgress,
+  type UserProfile, type Race, type QuizQuestion, type QuizAttempt,
+  type ForumPost, type ForumComment, type Article, type ArticleComment,
+  type NovelProgress, type InsertForumPost, type InsertForumComment,
+  type InsertArticle, type InsertArticleComment,
+} from "@shared/schema";
+import { users, type User } from "@shared/models/auth";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // User profiles
+  getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  upsertUserProfile(userId: string): Promise<UserProfile>;
+  addPoints(userId: string, points: number): Promise<UserProfile>;
+  spendPoints(userId: string, points: number): Promise<UserProfile>;
+  claimDailyPoints(userId: string): Promise<{ success: boolean; message: string; profile?: UserProfile }>;
+
+  // Users (for leaderboard / display names)
+  getUserById(id: string): Promise<User | undefined>;
+
+  // Races
+  getAllRaces(season?: number): Promise<Race[]>;
+  getRaceById(id: number): Promise<Race | undefined>;
+  upsertRace(race: Omit<Race, "id">): Promise<Race>;
+
+  // Quiz
+  getQuizQuestions(limit?: number): Promise<QuizQuestion[]>;
+  submitQuizAttempt(attempt: { userId: string; score: number; totalQuestions: number; pointsEarned: number }): Promise<QuizAttempt>;
+  getLeaderboard(): Promise<Array<{ userId: string; username: string | null; profileImageUrl: string | null; lifetimePoints: number; attempts: number }>>;
+
+  // Forum
+  getForumPostsByRace(raceId: number): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
+  getForumPostById(id: number): Promise<ForumPost | undefined>;
+  createForumPost(post: InsertForumPost): Promise<ForumPost>;
+  getForumComments(postId: number): Promise<Array<ForumComment & { username: string | null; profileImageUrl: string | null }>>;
+  createForumComment(comment: InsertForumComment): Promise<ForumComment>;
+  deleteForumPost(id: number, userId: string): Promise<boolean>;
+  deleteForumComment(id: number, userId: string): Promise<boolean>;
+
+  // Articles
+  getArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
+  getArticleById(id: number): Promise<(Article & { username: string | null; profileImageUrl: string | null }) | undefined>;
+  createArticle(article: InsertArticle): Promise<Article>;
+  updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined>;
+  deleteArticle(id: number): Promise<boolean>;
+  getArticleComments(articleId: number): Promise<Array<ArticleComment & { username: string | null; profileImageUrl: string | null }>>;
+  createArticleComment(comment: InsertArticleComment): Promise<ArticleComment>;
+  deleteArticleComment(id: number, userId: string): Promise<boolean>;
+
+  // Novel
+  getNovelProgress(userId: string): Promise<NovelProgress | undefined>;
+  upsertNovelProgress(userId: string, data: Partial<NovelProgress>): Promise<NovelProgress>;
+
+  // Admin
+  setAdminStatus(userId: string, isAdmin: boolean): Promise<void>;
+  isAdmin(userId: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getUserProfile(userId: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, userId));
+    return profile;
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async upsertUserProfile(userId: string): Promise<UserProfile> {
+    const [profile] = await db
+      .insert(userProfile)
+      .values({ userId, totalPoints: 0, lifetimePoints: 0, isAdmin: false })
+      .onConflictDoUpdate({ target: userProfile.userId, set: { userId } })
+      .returning();
+    return profile;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async addPoints(userId: string, points: number): Promise<UserProfile> {
+    await this.upsertUserProfile(userId);
+    const [profile] = await db
+      .update(userProfile)
+      .set({
+        totalPoints: sql`${userProfile.totalPoints} + ${points}`,
+        lifetimePoints: sql`${userProfile.lifetimePoints} + ${points}`,
+      })
+      .where(eq(userProfile.userId, userId))
+      .returning();
+    return profile;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+  async spendPoints(userId: string, points: number): Promise<UserProfile> {
+    const [profile] = await db
+      .update(userProfile)
+      .set({ totalPoints: sql`GREATEST(0, ${userProfile.totalPoints} - ${points})` })
+      .where(eq(userProfile.userId, userId))
+      .returning();
+    return profile;
+  }
+
+  async claimDailyPoints(userId: string): Promise<{ success: boolean; message: string; profile?: UserProfile }> {
+    await this.upsertUserProfile(userId);
+    const profile = await this.getUserProfile(userId);
+    if (!profile) return { success: false, message: "User not found" };
+
+    if (profile.lastDailyClaimAt) {
+      const lastClaim = new Date(profile.lastDailyClaimAt);
+      const now = new Date();
+      const hoursSince = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        const hoursLeft = Math.ceil(24 - hoursSince);
+        return { success: false, message: `Come back in ${hoursLeft} hour${hoursLeft !== 1 ? "s" : ""}` };
+      }
+    }
+
+    const [updated] = await db
+      .update(userProfile)
+      .set({
+        totalPoints: sql`${userProfile.totalPoints} + 5000`,
+        lifetimePoints: sql`${userProfile.lifetimePoints} + 5000`,
+        lastDailyClaimAt: new Date(),
+      })
+      .where(eq(userProfile.userId, userId))
+      .returning();
+
+    return { success: true, message: "Claimed 5,000 points!", profile: updated };
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async getAllRaces(season?: number): Promise<Race[]> {
+    if (season) {
+      return db.select().from(races).where(eq(races.season, season)).orderBy(asc(races.round));
+    }
+    return db.select().from(races).orderBy(asc(races.season), asc(races.round));
+  }
+
+  async getRaceById(id: number): Promise<Race | undefined> {
+    const [race] = await db.select().from(races).where(eq(races.id, id));
+    return race;
+  }
+
+  async upsertRace(race: Omit<Race, "id">): Promise<Race> {
+    const [result] = await db
+      .insert(races)
+      .values(race)
+      .onConflictDoUpdate({ target: races.round, set: race })
+      .returning();
+    return result;
+  }
+
+  async getQuizQuestions(limit = 10): Promise<QuizQuestion[]> {
+    return db.select().from(quizQuestions).orderBy(sql`RANDOM()`).limit(limit);
+  }
+
+  async submitQuizAttempt(attempt: { userId: string; score: number; totalQuestions: number; pointsEarned: number }): Promise<QuizAttempt> {
+    const [result] = await db.insert(quizAttempts).values(attempt).returning();
+    await this.addPoints(attempt.userId, attempt.pointsEarned);
+    return result;
+  }
+
+  async getLeaderboard() {
+    const results = await db
+      .select({
+        userId: userProfile.userId,
+        lifetimePoints: userProfile.lifetimePoints,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(userProfile)
+      .leftJoin(users, eq(userProfile.userId, users.id))
+      .orderBy(desc(userProfile.lifetimePoints))
+      .limit(50);
+
+    const attempts = await db
+      .select({ userId: quizAttempts.userId, count: sql<number>`count(*)` })
+      .from(quizAttempts)
+      .groupBy(quizAttempts.userId);
+
+    const attemptMap = new Map(attempts.map((a) => [a.userId, Number(a.count)]));
+
+    return results.map((r) => ({
+      userId: r.userId,
+      username: r.firstName ? `${r.firstName} ${r.lastName || ""}`.trim() : null,
+      profileImageUrl: r.profileImageUrl,
+      lifetimePoints: r.lifetimePoints,
+      attempts: attemptMap.get(r.userId) || 0,
+    }));
+  }
+
+  async getForumPostsByRace(raceId: number) {
+    const posts = await db
+      .select({
+        id: forumPosts.id,
+        raceId: forumPosts.raceId,
+        userId: forumPosts.userId,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        createdAt: forumPosts.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(forumPosts)
+      .leftJoin(users, eq(forumPosts.userId, users.id))
+      .where(eq(forumPosts.raceId, raceId))
+      .orderBy(desc(forumPosts.createdAt));
+
+    const commentCounts = await db
+      .select({ postId: forumComments.postId, count: sql<number>`count(*)` })
+      .from(forumComments)
+      .groupBy(forumComments.postId);
+
+    const countMap = new Map(commentCounts.map((c) => [c.postId, Number(c.count)]));
+
+    return posts.map((p) => ({
+      id: p.id,
+      raceId: p.raceId,
+      userId: p.userId,
+      title: p.title,
+      content: p.content,
+      createdAt: p.createdAt,
+      username: p.firstName ? `${p.firstName} ${p.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: p.profileImageUrl,
+      commentCount: countMap.get(p.id) || 0,
+    }));
+  }
+
+  async getForumPostById(id: number): Promise<ForumPost | undefined> {
+    const [post] = await db.select().from(forumPosts).where(eq(forumPosts.id, id));
+    return post;
+  }
+
+  async createForumPost(post: InsertForumPost): Promise<ForumPost> {
+    const [result] = await db.insert(forumPosts).values(post).returning();
+    return result;
+  }
+
+  async getForumComments(postId: number) {
+    const results = await db
+      .select({
+        id: forumComments.id,
+        postId: forumComments.postId,
+        userId: forumComments.userId,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(forumComments)
+      .leftJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.postId, postId))
+      .orderBy(asc(forumComments.createdAt));
+
+    return results.map((r) => ({
+      id: r.id,
+      postId: r.postId,
+      userId: r.userId,
+      content: r.content,
+      createdAt: r.createdAt,
+      username: r.firstName ? `${r.firstName} ${r.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: r.profileImageUrl,
+    }));
+  }
+
+  async createForumComment(comment: InsertForumComment): Promise<ForumComment> {
+    const [result] = await db.insert(forumComments).values(comment).returning();
+    return result;
+  }
+
+  async deleteForumPost(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(forumPosts).where(and(eq(forumPosts.id, id), eq(forumPosts.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deleteForumComment(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(forumComments).where(and(eq(forumComments.id, id), eq(forumComments.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getArticles() {
+    const results = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        content: articles.content,
+        excerpt: articles.excerpt,
+        imageUrl: articles.imageUrl,
+        authorId: articles.authorId,
+        tags: articles.tags,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .orderBy(desc(articles.publishedAt));
+
+    const commentCounts = await db
+      .select({ articleId: articleComments.articleId, count: sql<number>`count(*)` })
+      .from(articleComments)
+      .groupBy(articleComments.articleId);
+
+    const countMap = new Map(commentCounts.map((c) => [c.articleId, Number(c.count)]));
+
+    return results.map((a) => ({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      excerpt: a.excerpt,
+      imageUrl: a.imageUrl,
+      authorId: a.authorId,
+      tags: a.tags,
+      publishedAt: a.publishedAt,
+      updatedAt: a.updatedAt,
+      username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : "Admin",
+      profileImageUrl: a.profileImageUrl,
+      commentCount: countMap.get(a.id) || 0,
+    }));
+  }
+
+  async getArticleById(id: number) {
+    const [result] = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        content: articles.content,
+        excerpt: articles.excerpt,
+        imageUrl: articles.imageUrl,
+        authorId: articles.authorId,
+        tags: articles.tags,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .where(eq(articles.id, id));
+
+    if (!result) return undefined;
+    return {
+      ...result,
+      username: result.firstName ? `${result.firstName} ${result.lastName || ""}`.trim() : "Admin",
+    };
+  }
+
+  async createArticle(article: InsertArticle): Promise<Article> {
+    const [result] = await db.insert(articles).values(article).returning();
+    return result;
+  }
+
+  async updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined> {
+    const [result] = await db.update(articles).set({ ...article, updatedAt: new Date() }).where(eq(articles.id, id)).returning();
+    return result;
+  }
+
+  async deleteArticle(id: number): Promise<boolean> {
+    const result = await db.delete(articles).where(eq(articles.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getArticleComments(articleId: number) {
+    const results = await db
+      .select({
+        id: articleComments.id,
+        articleId: articleComments.articleId,
+        userId: articleComments.userId,
+        content: articleComments.content,
+        createdAt: articleComments.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(articleComments)
+      .leftJoin(users, eq(articleComments.userId, users.id))
+      .where(eq(articleComments.articleId, articleId))
+      .orderBy(asc(articleComments.createdAt));
+
+    return results.map((r) => ({
+      id: r.id,
+      articleId: r.articleId,
+      userId: r.userId,
+      content: r.content,
+      createdAt: r.createdAt,
+      username: r.firstName ? `${r.firstName} ${r.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: r.profileImageUrl,
+    }));
+  }
+
+  async createArticleComment(comment: InsertArticleComment): Promise<ArticleComment> {
+    const [result] = await db.insert(articleComments).values(comment).returning();
+    return result;
+  }
+
+  async deleteArticleComment(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(articleComments).where(and(eq(articleComments.id, id), eq(articleComments.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNovelProgress(userId: string): Promise<NovelProgress | undefined> {
+    const [progress] = await db.select().from(novelProgress).where(eq(novelProgress.userId, userId));
+    return progress;
+  }
+
+  async upsertNovelProgress(userId: string, data: Partial<NovelProgress>): Promise<NovelProgress> {
+    const [result] = await db
+      .insert(novelProgress)
+      .values({ userId, ...data })
+      .onConflictDoUpdate({ target: novelProgress.userId, set: { ...data, lastPlayedAt: new Date() } })
+      .returning();
+    return result;
+  }
+
+  async setAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
+    await this.upsertUserProfile(userId);
+    await db.update(userProfile).set({ isAdmin }).where(eq(userProfile.userId, userId));
+  }
+
+  async isAdmin(userId: string): Promise<boolean> {
+    const profile = await this.getUserProfile(userId);
+    return profile?.isAdmin ?? false;
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
