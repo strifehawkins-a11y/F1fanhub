@@ -115,7 +115,7 @@ export default function Dashboard() {
         </div>
       </Card>
 
-      {/* Aria's Story Teaser */}
+      {/* Bea's Story Teaser */}
       <Link href="/novel">
         <Card
           data-testid="card-novel-teaser"
@@ -130,10 +130,10 @@ export default function Dashboard() {
                 <span className="font-racing text-xs text-primary tracking-widest uppercase font-bold">Visual Novel</span>
               </div>
               <h3 className="font-racing text-lg font-black text-foreground leading-tight mb-1">
-                Aria's Racing Dream
+                Bea's Racing Dream
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Help rookie driver Aria Voss navigate the highs and lows of her debut F1 season.
+                Help rookie driver Bea Voss navigate the highs and lows of her debut F1 season.
               </p>
             </div>
             {/* Character portrait placeholder */}

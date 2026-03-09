@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
 
-// Aria character component - AI portrait
+// Bea character component - AI portrait
 function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string }) {
   const suitItem = OUTFIT_CATEGORIES[0].items.find((i) => outfit.includes(i.id)) || OUTFIT_CATEGORIES[0].items[0];
 
@@ -48,7 +48,7 @@ function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string 
       {/* Character image */}
       <img
         src={ariaVossImage}
-        alt="Aria Voss"
+        alt="Bea Voss"
         className="relative z-10 h-full w-full object-cover object-top rounded-2xl"
         style={{
           boxShadow: emotionGlow[emotion] || emotionGlow.default,
@@ -319,7 +319,7 @@ export default function NovelPage() {
           {/* Tab header */}
           <div className="sticky top-0 z-10 px-4 pt-4 pb-2" style={{ background: "hsl(0 40% 6%)" }}>
             <div className="flex items-center justify-between mb-3">
-              <h1 className="font-racing text-xl font-black text-white">Aria's Story</h1>
+              <h1 className="font-racing text-xl font-black text-white">Bea's Story</h1>
               <div className="flex items-center gap-2">
                 <Heart className="w-4 h-4 text-pink-500" />
                 <div className="w-24 h-2 rounded-full bg-white/10 overflow-hidden">
@@ -397,7 +397,7 @@ export default function NovelPage() {
                     <div className="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center">
                       <Heart className="w-3 h-3 text-pink-400" />
                     </div>
-                    <span className="font-racing text-xs font-bold text-primary tracking-wide">ARIA VOSS</span>
+                    <span className="font-racing text-xs font-bold text-primary tracking-wide">BEA VOSS</span>
                   </div>
                 )}
                 {scene.character === "narrator" && (

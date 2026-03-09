@@ -13,7 +13,7 @@ const navItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/quiz", label: "Quiz", icon: Brain },
   { path: "/forum", label: "Forum", icon: MessageSquare },
-  { path: "/novel", label: "Aria", icon: Heart },
+  { path: "/novel", label: "Bea", icon: Heart },
   { path: "/leaderboard", label: "Board", icon: Trophy },
 ];
 
