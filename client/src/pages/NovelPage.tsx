@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check } from "lucide-react";
+import ariaVossImage from "@assets/aria-voss.png";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,106 +12,80 @@ import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
 
-// Aria character component - CSS art
+// Aria character component - AI portrait
 function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string }) {
   const suitItem = OUTFIT_CATEGORIES[0].items.find((i) => outfit.includes(i.id)) || OUTFIT_CATEGORIES[0].items[0];
-  const helmetItem = OUTFIT_CATEGORIES[2].items.find((i) => outfit.includes(i.id)) || OUTFIT_CATEGORIES[2].items[0];
 
-  const emotionColor: Record<string, string> = {
-    happy: "#FFD700",
-    nervous: "#FFA500",
-    determined: "#CC0000",
-    sad: "#6B9BD2",
-    excited: "#FFD700",
-    loving: "#FF69B4",
-    angry: "#FF4500",
-    default: "#FFFFFF",
+  const emotionGlow: Record<string, string> = {
+    happy: "0 0 40px 12px #FFD70066",
+    nervous: "0 0 40px 12px #FFA50066",
+    determined: "0 0 40px 12px #CC000066",
+    sad: "0 0 40px 12px #6B9BD266",
+    excited: "0 0 40px 12px #FFD70066",
+    loving: "0 0 40px 12px #FF69B466",
+    angry: "0 0 40px 12px #FF450066",
+    default: "0 0 30px 8px #ffffff22",
   };
 
-  const glowColor = emotionColor[emotion] || "#FFFFFF";
+  const suitTint: Record<string, string> = {
+    happy: "#FFD70015",
+    nervous: "#FFA50015",
+    determined: "#CC000015",
+    sad: "#6B9BD215",
+    excited: "#FFD70015",
+    loving: "#FF69B415",
+    default: "transparent",
+  };
 
   return (
-    <div className="relative flex flex-col items-center" style={{ width: 120, height: 200 }}>
-      {/* Glow effect */}
+    <div className="relative flex flex-col items-center" style={{ width: 160, height: 280 }}>
+      {/* Outfit-colored rim glow */}
       <div
-        className="absolute inset-0 rounded-full blur-xl opacity-30 pointer-events-none"
-        style={{ background: glowColor }}
+        className="absolute inset-0 rounded-2xl pointer-events-none z-0"
+        style={{ boxShadow: `0 0 32px 8px ${suitItem.accent}44` }}
       />
 
-      {/* Helmet */}
+      {/* Character image */}
+      <img
+        src={ariaVossImage}
+        alt="Aria Voss"
+        className="relative z-10 h-full w-full object-cover object-top rounded-2xl"
+        style={{
+          boxShadow: emotionGlow[emotion] || emotionGlow.default,
+          filter: `drop-shadow(0 0 8px ${suitItem.accent}88)`,
+        }}
+      />
+
+      {/* Suit-color tint overlay */}
       <div
-        className="relative z-10 w-16 h-14 rounded-t-full rounded-b-lg flex items-end justify-center overflow-hidden"
-        style={{ background: helmetItem.color, border: `2px solid ${helmetItem.accent}` }}
-      >
-        {/* Visor */}
-        <div
-          className="absolute top-4 left-2 right-2 h-5 rounded-md opacity-80"
-          style={{ background: `linear-gradient(135deg, ${helmetItem.accent}88, ${helmetItem.accent}22)` }}
-        />
-        {/* Chin */}
-        <div
-          className="w-10 h-4 rounded-b-lg"
-          style={{ background: helmetItem.color, borderTop: `1px solid ${helmetItem.accent}` }}
-        />
-      </div>
+        className="absolute inset-0 rounded-2xl z-20 pointer-events-none"
+        style={{ background: suitTint[emotion] || "transparent", mixBlendMode: "color" }}
+      />
 
-      {/* Neck */}
-      <div className="w-4 h-3 z-10" style={{ background: "#D4A574" }} />
+      {/* Emotion badge */}
+      {(emotion === "happy" || emotion === "excited" || emotion === "loving") && (
+        <div className="absolute -top-2 -right-2 z-30">
+          <Heart className="w-6 h-6 text-pink-400 drop-shadow animate-pulse" />
+        </div>
+      )}
+      {emotion === "determined" && (
+        <div className="absolute -top-2 -right-2 z-30">
+          <Star className="w-6 h-6 text-yellow-400 drop-shadow animate-bounce" />
+        </div>
+      )}
+      {emotion === "angry" && (
+        <div className="absolute -top-2 -right-2 z-30">
+          <Zap className="w-6 h-6 text-orange-400 drop-shadow animate-pulse" />
+        </div>
+      )}
 
-      {/* Body / Suit */}
+      {/* Outfit label chip */}
       <div
-        className="relative z-10 w-20 h-20 rounded-lg flex flex-col items-center justify-start pt-2"
-        style={{ background: suitItem.color, border: `2px solid ${suitItem.accent}22` }}
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full font-racing text-[9px] font-bold tracking-wider"
+        style={{ background: suitItem.color, color: suitItem.accent, border: `1px solid ${suitItem.accent}66` }}
       >
-        {/* Racing stripes */}
-        <div
-          className="absolute top-0 left-2 right-2 h-1 rounded-full opacity-70"
-          style={{ background: suitItem.accent }}
-        />
-        <div
-          className="absolute top-3 left-4 right-4 h-0.5 rounded-full opacity-50"
-          style={{ background: suitItem.accent }}
-        />
-
-        {/* Number/logo */}
-        <div
-          className="w-8 h-5 rounded-sm flex items-center justify-center mt-1"
-          style={{ background: suitItem.accent + "33", border: `1px solid ${suitItem.accent}` }}
-        >
-          <span className="font-racing text-[8px] font-black" style={{ color: suitItem.accent }}>
-            AV 77
-          </span>
-        </div>
-
-        {/* Arms suggestion */}
-        <div className="flex gap-1 mt-2">
-          <div
-            className="w-4 h-8 rounded-lg"
-            style={{ background: suitItem.color, border: `1px solid ${suitItem.accent}22` }}
-          />
-          <div
-            className="w-4 h-8 rounded-lg"
-            style={{ background: suitItem.color, border: `1px solid ${suitItem.accent}22` }}
-          />
-        </div>
+        {suitItem.label}
       </div>
-
-      {/* Legs */}
-      <div className="flex gap-2 z-10">
-        <div className="w-7 h-14 rounded-b-lg" style={{ background: suitItem.color }} />
-        <div className="w-7 h-14 rounded-b-lg" style={{ background: suitItem.color }} />
-      </div>
-
-      {/* Emotion indicator */}
-      {emotion === "happy" || emotion === "excited" || emotion === "loving" ? (
-        <div className="absolute -top-2 -right-2 z-20">
-          <Heart className="w-5 h-5 text-pink-500 animate-pulse" />
-        </div>
-      ) : emotion === "determined" ? (
-        <div className="absolute -top-2 -right-2 z-20">
-          <Star className="w-5 h-5 text-yellow-500 animate-bounce" />
-        </div>
-      ) : null}
     </div>
   );
 }
