@@ -95,6 +95,14 @@ export const novelProgress = pgTable("novel_progress", {
   lastPlayedAt: timestamp("last_played_at").defaultNow(),
 });
 
+export const localCredentials = pgTable("local_credentials", {
+  userId: varchar("user_id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertForumPostSchema = createInsertSchema(forumPosts).omit({ id: true, createdAt: true });
 export const insertForumCommentSchema = createInsertSchema(forumComments).omit({ id: true, createdAt: true });
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true, updatedAt: true });

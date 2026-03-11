@@ -1,9 +1,11 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/Landing";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
 import Dashboard from "@/pages/Dashboard";
 import QuizPage from "@/pages/QuizPage";
 import ForumPage from "@/pages/ForumPage";
@@ -37,6 +39,7 @@ function AuthenticatedApp() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -50,6 +53,8 @@ function Router() {
   }
 
   if (!isAuthenticated) {
+    if (location === "/login") return <LoginPage />;
+    if (location === "/register") return <RegisterPage />;
     return <Landing />;
   }
 

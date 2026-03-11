@@ -4,15 +4,17 @@ import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integra
 import { storage } from "./storage";
 import { insertForumPostSchema, insertForumCommentSchema, insertArticleSchema, insertArticleCommentSchema } from "@shared/schema";
 import { seedDatabase } from "./seed";
-import { setupGoogleAuth, isGoogleAuthEnabled } from "./googleAuth";
+import { setupFacebookAuth, isFacebookAuthEnabled } from "./facebookAuth";
+import { setupLocalAuth } from "./localAuth";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
-  setupGoogleAuth(app);
+  setupLocalAuth(app);
+  setupFacebookAuth(app);
 
   app.get("/api/auth/config", (_req, res) => {
-    res.json({ googleAuthEnabled: isGoogleAuthEnabled() });
+    res.json({ facebookAuthEnabled: isFacebookAuthEnabled() });
   });
 
   // ---- USER PROFILE ----
