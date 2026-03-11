@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours, differenceInMinutes } from "date-fns";
@@ -39,11 +38,9 @@ export default function Dashboard() {
     queryKey: ["/api/profile"],
   });
 
-  const [calendarSeason, setCalendarSeason] = useState<2025 | 2026>(2025);
-
   const { data: races } = useQuery<Race[]>({
-    queryKey: ["/api/races", calendarSeason],
-    queryFn: () => fetch(`/api/races?season=${calendarSeason}`).then(r => r.json()),
+    queryKey: ["/api/races", 2026],
+    queryFn: () => fetch(`/api/races?season=2026`).then(r => r.json()),
   });
 
   const { data: articles } = useQuery<any[]>({
@@ -226,30 +223,13 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-2">
-            <Flag className="w-3 h-3" /> Calendar
+            <Flag className="w-3 h-3" /> 2026 Calendar
           </h3>
           <Link href="/forum">
             <button className="text-[11px] text-primary font-racing tracking-wide" data-testid="link-view-calendar">
               View All
             </button>
           </Link>
-        </div>
-        {/* Season Tabs */}
-        <div className="flex gap-2 mb-3">
-          {([2025, 2026] as const).map((yr) => (
-            <button
-              key={yr}
-              data-testid={`button-calendar-season-${yr}`}
-              onClick={() => setCalendarSeason(yr)}
-              className={`flex-1 py-1.5 rounded-lg font-racing text-xs font-bold tracking-widest transition-colors
-                ${calendarSeason === yr
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-card-border text-muted-foreground hover:text-foreground"
-                }`}
-            >
-              {yr}
-            </button>
-          ))}
         </div>
         <div className="space-y-2">
           {nextRaces.map((race) => (

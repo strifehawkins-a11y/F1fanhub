@@ -16,35 +16,16 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Race } from "@shared/schema";
 
 function RaceList({ onSelectRace }: { onSelectRace: (id: number) => void }) {
-  const [season, setSeason] = useState<2025 | 2026>(2025);
   const { data: races } = useQuery<Race[]>({
-    queryKey: ["/api/races", season],
-    queryFn: () => fetch(`/api/races?season=${season}`).then(r => r.json()),
+    queryKey: ["/api/races", 2026],
+    queryFn: () => fetch(`/api/races?season=2026`).then(r => r.json()),
   });
 
   return (
     <div className="px-4 py-6 space-y-5">
       <div>
-        <p className="font-racing text-xs text-muted-foreground tracking-widest uppercase">Discuss</p>
+        <p className="font-racing text-xs text-muted-foreground tracking-widest uppercase">Discuss · 2026 Season</p>
         <h1 className="font-racing text-3xl font-black text-foreground mt-1">Race Forum</h1>
-      </div>
-
-      {/* Season Switcher */}
-      <div className="flex gap-2">
-        {([2025, 2026] as const).map((yr) => (
-          <button
-            key={yr}
-            data-testid={`button-season-${yr}`}
-            onClick={() => setSeason(yr)}
-            className={`flex-1 py-2 rounded-lg font-racing text-sm font-bold tracking-widest transition-colors
-              ${season === yr
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-card-border text-muted-foreground hover:text-foreground"
-              }`}
-          >
-            {yr} Season
-          </button>
-        ))}
       </div>
 
       <p className="text-sm text-muted-foreground">Select a Grand Prix to join the discussion.</p>
