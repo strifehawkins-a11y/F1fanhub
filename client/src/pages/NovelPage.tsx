@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check } from "lucide-react";
-import ariaVossImage from "@assets/aria-voss.png";
+import ariaVossImage from "@assets/bea-voss.png";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -4,10 +4,16 @@ import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integra
 import { storage } from "./storage";
 import { insertForumPostSchema, insertForumCommentSchema, insertArticleSchema, insertArticleCommentSchema } from "@shared/schema";
 import { seedDatabase } from "./seed";
+import { setupGoogleAuth, isGoogleAuthEnabled } from "./googleAuth";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
+  setupGoogleAuth(app);
+
+  app.get("/api/auth/config", (_req, res) => {
+    res.json({ googleAuthEnabled: isGoogleAuthEnabled() });
+  });
 
   // ---- USER PROFILE ----
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {

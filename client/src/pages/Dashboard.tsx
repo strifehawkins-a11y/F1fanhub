@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours, differenceInMinutes } from "date-fns";
 import { Flag, Trophy, MessageSquare, BookOpen, Zap, Heart, ChevronRight, Timer, Star } from "lucide-react";
+import beaVossImage from "@assets/bea-voss.png";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -136,14 +137,14 @@ export default function Dashboard() {
                 Help rookie driver Bea Voss navigate the highs and lows of her debut F1 season.
               </p>
             </div>
-            {/* Character portrait placeholder */}
-            <div className="w-16 h-20 flex-shrink-0 rounded-lg relative flex flex-col items-center justify-end overflow-hidden"
-              style={{ background: "linear-gradient(180deg, hsl(0 84% 25%) 0%, hsl(0 84% 15%) 100%)" }}>
-              {/* Stylized cartoon character */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-amber-300 border-2 border-amber-400" />
-              <div className="absolute top-7 left-1/2 -translate-x-1/2 w-10 h-8 bg-primary rounded-t-sm" />
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary/60" />
-              <Star className="absolute bottom-3 w-3 h-3 text-yellow-400" />
+            {/* Bea portrait */}
+            <div className="w-16 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-primary/30"
+              style={{ background: "linear-gradient(180deg, hsl(0 60% 12%) 0%, hsl(220 10% 8%) 100%)" }}>
+              <img
+                src={beaVossImage}
+                alt="Bea Voss"
+                className="w-full h-full object-cover object-top"
+              />
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between">
