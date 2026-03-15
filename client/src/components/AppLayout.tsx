@@ -36,22 +36,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isActive = (path: string) => path === "/" ? location === "/" : location.startsWith(path);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="h-0.5 bg-primary w-full" />
+    <div className="min-h-screen bg-gray-50">
+      {/* F1 red top stripe */}
+      <div className="h-1 bg-primary w-full" />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/98 backdrop-blur-md border-b border-border">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center h-14 gap-4">
+          <div className="flex items-center h-14 gap-3">
             {/* Logo */}
             <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
+              <div className="flex items-center gap-2.5 cursor-pointer group flex-shrink-0">
+                <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center shadow-sm shadow-primary/20 group-hover:scale-105 transition-transform">
                   <span className="font-racing text-white text-[10px] font-black tracking-tighter">F1</span>
                 </div>
-                <span className="font-racing text-foreground font-bold tracking-widest text-sm uppercase hidden sm:block">Paddock</span>
+                <span className="font-racing text-gray-900 font-bold tracking-[0.2em] text-sm uppercase hidden sm:block">Paddock</span>
               </div>
             </Link>
+
+            {/* Divider */}
+            <div className="hidden md:block h-5 w-px bg-gray-200 mx-1" />
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-0.5 flex-1">
@@ -59,10 +63,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Link key={path} href={path}>
                   <button
                     data-testid={`nav-${label.toLowerCase()}`}
-                    className={`px-3 py-1.5 rounded font-racing text-xs font-bold tracking-wide transition-all ${
+                    className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
                       isActive(path)
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card"
+                        ? "text-primary bg-primary/8 border border-primary/15"
+                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     {label}
@@ -71,8 +75,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               ))}
               {profile?.isAdmin && (
                 <Link href="/admin">
-                  <button className={`px-3 py-1.5 rounded font-racing text-xs font-bold tracking-wide transition-all ${
-                    isActive("/admin") ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-card"
+                  <button className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
+                    isActive("/admin")
+                      ? "text-primary bg-primary/8 border border-primary/15"
+                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
                   }`}>
                     Admin
                   </button>
@@ -83,26 +89,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {/* Right section */}
             <div className="flex items-center gap-2 ml-auto">
               {profile && (
-                <div className="hidden sm:flex items-center gap-1.5 bg-card border border-border rounded-md px-2.5 py-1.5">
+                <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
                   <Zap className="w-3 h-3 text-primary" />
-                  <span className="font-racing text-xs font-bold text-foreground tabular-nums">
+                  <span className="font-racing text-xs font-black text-gray-900 tabular-nums">
                     {profile.totalPoints.toLocaleString()}
                   </span>
-                  <span className="font-racing text-[9px] text-muted-foreground tracking-widest">PTS</span>
+                  <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
                 </div>
               )}
               <Link href="/leaderboard">
-                <Avatar className="w-8 h-8 cursor-pointer ring-1 ring-border hover:ring-primary transition-all" data-testid="link-profile">
+                <Avatar
+                  className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
+                  data-testid="link-profile"
+                >
                   <AvatarImage src={(user as any)?.profileImageUrl || ""} />
-                  <AvatarFallback className="bg-card text-foreground text-xs font-racing font-bold border border-border">
+                  <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
               </Link>
 
-              {/* Mobile menu toggle */}
+              {/* Mobile hamburger */}
               <button
-                className="md:hidden p-1.5 rounded text-muted-foreground hover:text-foreground"
+                className="md:hidden p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -113,14 +122,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Mobile Nav dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-background/98">
-            <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-1">
+          <div className="md:hidden border-t border-gray-100 bg-white">
+            <div className="max-w-7xl mx-auto px-4 py-3 grid grid-cols-4 gap-1">
               {navItems.map(({ path, label, icon: Icon }) => (
                 <Link key={path} href={path}>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex flex-col items-center gap-1 px-2 py-2 rounded font-racing text-[10px] font-bold tracking-wide transition-all ${
-                      isActive(path) ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+                    className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide transition-all ${
+                      isActive(path)
+                        ? "text-primary bg-primary/8"
+                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -132,8 +143,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Link href="/admin">
                   <button
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex flex-col items-center gap-1 px-2 py-2 rounded font-racing text-[10px] font-bold tracking-wide transition-all ${
-                      isActive("/admin") ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+                    className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide transition-all ${
+                      isActive("/admin")
+                        ? "text-primary bg-primary/8"
+                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Shield className="w-4 h-4" />
