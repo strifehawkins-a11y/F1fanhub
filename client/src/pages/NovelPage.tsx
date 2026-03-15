@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check } from "lucide-react";
-import ariaVossImage from "@assets/bea-voss.png";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +10,43 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
+
+// Suit portrait images — one per racing suit
+import beaSuitDefault   from "@assets/generated_images/bea-suit-default.png";
+import beaSuitFerrari   from "@assets/generated_images/bea-suit-ferrari.png";
+import beaSuitMclaren   from "@assets/generated_images/bea-suit-mclaren.png";
+import beaSuitMercedes  from "@assets/generated_images/bea-suit-mercedes.png";
+import beaSuitRedbull   from "@assets/generated_images/bea-suit-redbull.png";
+import beaSuitAlpine    from "@assets/generated_images/bea-suit-alpine.png";
+import beaSuitChampion  from "@assets/generated_images/bea-suit-champion.png";
+
+// Hair portrait images — one per hairstyle
+import beaHairDefault   from "@assets/generated_images/bea-hair-default.png";
+import beaHairPonytail  from "@assets/generated_images/bea-hair-ponytail.png";
+import beaHairBraided   from "@assets/generated_images/bea-hair-braided.png";
+import beaHairDark      from "@assets/generated_images/bea-hair-dark.png";
+import beaHairBlonde    from "@assets/generated_images/bea-hair-blonde.png";
+import beaHairPostrace  from "@assets/generated_images/bea-hair-postrace.png";
+
+// Lookup maps: item id → image src
+const SUIT_IMAGES: Record<string, string> = {
+  suit_default:  beaSuitDefault,
+  suit_ferrari:  beaSuitFerrari,
+  suit_mclaren:  beaSuitMclaren,
+  suit_mercedes: beaSuitMercedes,
+  suit_redbull:  beaSuitRedbull,
+  suit_alpine:   beaSuitAlpine,
+  suit_champion: beaSuitChampion,
+};
+
+const HAIR_IMAGES: Record<string, string> = {
+  hair_default:  beaHairDefault,
+  hair_ponytail: beaHairPonytail,
+  hair_braided:  beaHairBraided,
+  hair_dark:     beaHairDark,
+  hair_blonde:   beaHairBlonde,
+  hair_postrace: beaHairPostrace,
+};
 
 // Collect all equipped items across every category
 function getEquippedItems(outfit: string[]) {
@@ -25,56 +61,90 @@ function mergeFilters(items: ReturnType<typeof getEquippedItems>): string {
   return filters.length ? filters.join(" ") : "none";
 }
 
-// Bea character component - AI portrait
+// Bea character component — AI portrait, dynamically chosen by suit + hair
 function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string }) {
   const allItems = getEquippedItems(outfit);
+
+  // Find equipped suit and hair items
   const suitItem = OUTFIT_CATEGORIES[0].items.find((i) => outfit.includes(i.id)) || OUTFIT_CATEGORIES[0].items[0];
-  const accItem = OUTFIT_CATEGORIES.find(c => c.id === "accessory")?.items.find(i => outfit.includes(i.id));
-  const combinedFilter = mergeFilters(allItems);
+  const hairId   = outfit.find((id) => id.startsWith("hair_")) || "hair_default";
+  const accItem  = OUTFIT_CATEGORIES.find(c => c.id === "accessory")?.items.find(i => outfit.includes(i.id));
 
-  // Overlays from each equipped item
-  const overlays = allItems.map((i) => (i as any).overlay || "transparent").filter(o => o !== "transparent");
+  // Portrait selection logic:
+  //   - Non-default HAIR → show hair portrait (most physically dramatic change)
+  //   - Then apply suit CSS filter on top so the suit colour is still reflected
+  //   - Default hair → show suit portrait directly
+  const hairIsNonDefault = hairId !== "hair_default";
+  const portraitSrc = hairIsNonDefault
+    ? (HAIR_IMAGES[hairId] || SUIT_IMAGES[suitItem.id] || SUIT_IMAGES["suit_default"])
+    : (SUIT_IMAGES[suitItem.id] || SUIT_IMAGES["suit_default"]);
 
-  // Main glow from suit item (emotion-aware)
+  // Build CSS filter:
+  //   - When hair is primary image: apply the SUIT filter so team colour bleeds through
+  //   - When suit is primary image: apply other category filters (helmet/casual/accessory)
+  const nonSuitNonHairItems = allItems.filter(i => !i.id.startsWith("suit_") && !i.id.startsWith("hair_"));
+  const suitFilter = (suitItem as any).filter as string || "none";
+
+  let compositeFilter: string;
+  if (hairIsNonDefault) {
+    // Hair portrait: layer suit filter + other filters
+    const others = nonSuitNonHairItems.map(i => (i as any).filter || "none").filter(f => f !== "none");
+    const parts = [suitFilter !== "none" ? suitFilter : null, ...others].filter(Boolean);
+    compositeFilter = parts.length ? parts.join(" ") : "none";
+  } else {
+    // Suit portrait: layer non-suit, non-hair filters
+    const others = nonSuitNonHairItems.map(i => (i as any).filter || "none").filter(f => f !== "none");
+    compositeFilter = others.length ? others.join(" ") : "none";
+  }
+
+  // Colour overlays from NON-suit categories
+  const overlays = allItems
+    .filter(i => !i.id.startsWith("suit_"))
+    .map(i => (i as any).overlay || "transparent")
+    .filter(o => o !== "transparent");
+
   const emotionGlow: Record<string, string> = {
-    happy:     "0 0 40px 12px #FFD70066",
-    nervous:   "0 0 40px 12px #FFA50066",
-    determined:"0 0 40px 12px #CC000066",
-    sad:       "0 0 40px 12px #6B9BD266",
-    excited:   "0 0 40px 12px #FFD70066",
-    loving:    "0 0 40px 12px #FF69B466",
-    angry:     "0 0 40px 12px #FF450066",
-    default:   "0 0 30px 8px #ffffff22",
+    happy:      "0 0 40px 12px #FFD70066",
+    nervous:    "0 0 40px 12px #FFA50066",
+    determined: "0 0 40px 12px #CC000066",
+    sad:        "0 0 40px 12px #6B9BD266",
+    excited:    "0 0 40px 12px #FFD70066",
+    loving:     "0 0 40px 12px #FF69B466",
+    angry:      "0 0 40px 12px #FF450066",
+    default:    "0 0 30px 8px #ffffff22",
   };
   const itemGlow = (suitItem as any).glow || "#CC000055";
 
   return (
-    <div className="relative flex flex-col items-center" style={{ width: 160, height: 280 }}>
-      {/* Item-colored rim glow */}
+    <div className="relative flex flex-col items-center" style={{ width: 170, height: 290 }}>
+      {/* Outfit-coloured rim glow */}
       <div
         className="absolute inset-0 rounded-2xl pointer-events-none z-0"
-        style={{ boxShadow: `0 0 36px 10px ${itemGlow}` }}
+        style={{ boxShadow: `0 0 40px 12px ${itemGlow}` }}
       />
 
-      {/* Character image — combined CSS filters from all equipped items */}
+      {/* Dynamic portrait — crossfades on outfit change */}
       <img
-        src={ariaVossImage}
+        key={portraitSrc}
+        src={portraitSrc}
         alt="Bea Voss"
-        className="relative z-10 h-full w-full object-cover object-top rounded-2xl transition-all duration-700"
+        className="relative z-10 h-full w-full object-cover object-top rounded-2xl"
         style={{
           boxShadow: emotionGlow[emotion] || emotionGlow.default,
-          filter: combinedFilter !== "none"
-            ? `${combinedFilter} drop-shadow(0 0 8px ${itemGlow})`
-            : `drop-shadow(0 0 8px ${(suitItem as any).accent}88)`,
+          filter: compositeFilter !== "none"
+            ? `${compositeFilter} drop-shadow(0 0 10px ${itemGlow})`
+            : `drop-shadow(0 0 10px ${itemGlow})`,
+          transition: "filter 0.6s ease, box-shadow 0.6s ease",
+          animation: "beaFadeIn 0.5s ease",
         }}
       />
 
-      {/* Colour overlay layers — one per equipped item */}
+      {/* Colour overlay layers */}
       {overlays.map((col, i) => (
         <div
           key={i}
-          className="absolute inset-0 rounded-2xl z-20 pointer-events-none transition-all duration-700"
-          style={{ background: col, mixBlendMode: "color", opacity: 0.7 }}
+          className="absolute inset-0 rounded-2xl z-20 pointer-events-none"
+          style={{ background: col, mixBlendMode: "color", opacity: 0.6, transition: "background 0.6s ease" }}
         />
       ))}
 
@@ -102,7 +172,7 @@ function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string 
         </div>
       )}
 
-      {/* Outfit label chip — shows active suit */}
+      {/* Outfit label chip */}
       <div
         className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full font-racing text-[9px] font-bold tracking-wider whitespace-nowrap"
         style={{ background: suitItem.color, color: suitItem.accent, border: `1px solid ${suitItem.accent}66` }}
@@ -200,16 +270,33 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
                     }
                   }}
                 >
-                  {/* Colour swatch with overlay preview */}
-                  <div className="relative w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
-                    style={{
-                      background: item.color,
-                      border: `2px solid ${item.accent}`,
-                      filter: hasEffect ? itemAny.filter : "none",
-                    }}
-                  >
-                    {accEmoji || null}
-                  </div>
+                  {/* Thumbnail — AI portrait for suits/hair, colour swatch for others */}
+                  {(SUIT_IMAGES[item.id] || HAIR_IMAGES[item.id]) ? (
+                    <div className="relative w-10 h-12 rounded-lg flex-shrink-0 overflow-hidden"
+                      style={{ border: `2px solid ${item.accent}`, boxShadow: `0 0 8px ${(item as any).glow || item.color}` }}>
+                      <img
+                        src={SUIT_IMAGES[item.id] || HAIR_IMAGES[item.id]}
+                        alt={item.label}
+                        className="w-full h-full object-cover object-top"
+                        style={{ filter: hasEffect ? itemAny.filter : "none" }}
+                      />
+                      {isEquipped && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Check className="w-4 h-4 text-white drop-shadow" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
+                      style={{
+                        background: item.color,
+                        border: `2px solid ${item.accent}`,
+                        filter: hasEffect ? itemAny.filter : "none",
+                      }}
+                    >
+                      {accEmoji || null}
+                    </div>
+                  )}
 
                   <div className="flex-1 text-left min-w-0">
                     <p className="font-racing text-xs font-bold text-white leading-tight">{item.label}</p>
