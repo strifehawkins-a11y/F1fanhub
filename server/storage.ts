@@ -65,6 +65,9 @@ export interface IStorage {
   updateDriverStanding(id: number, data: Partial<DriverStanding>): Promise<DriverStanding | undefined>;
   getConstructorStandings(season?: number): Promise<ConstructorStanding[]>;
   updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined>;
+
+  // Race updates
+  updateRace(id: number, data: Partial<Race>): Promise<Race | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -155,6 +158,12 @@ export class DatabaseStorage implements IStorage {
       .values(race)
       .onConflictDoUpdate({ target: races.round, set: race })
       .returning();
+    return result;
+  }
+
+  async updateRace(id: number, data: Partial<Race>): Promise<Race | undefined> {
+    const { id: _id, ...updateData } = data as any;
+    const [result] = await db.update(races).set(updateData).where(eq(races.id, id)).returning();
     return result;
   }
 

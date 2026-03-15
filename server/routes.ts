@@ -371,6 +371,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/races/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const updated = await storage.updateRace(Number(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Race not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update race" });
+    }
+  });
+
   // Seed the database on startup
   await seedDatabase();
 
