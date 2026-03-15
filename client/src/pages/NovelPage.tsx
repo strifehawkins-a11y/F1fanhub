@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check } from "lucide-react";
+import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check, Wand2 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -331,6 +332,7 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
 export default function NovelPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [currentOutfit, setCurrentOutfit] = useState<string[]>(["suit_default", "casual_default", "helmet_default", "hair_default", "acc_default"]);
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -623,6 +625,15 @@ export default function NovelPage() {
           {/* Dress Up Tab */}
           <TabsContent value="dresser" className="mt-0 px-4 pb-24">
             <div className="py-3">
+              {/* Studio launch button */}
+              <button
+                data-testid="button-open-creator"
+                onClick={() => setLocation("/creator")}
+                className="w-full mb-4 flex items-center justify-center gap-2 py-3 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 hover:border-primary/70 transition-all font-racing text-sm font-bold text-primary tracking-widest uppercase"
+              >
+                <Wand2 className="w-4 h-4" />
+                Open Character Studio
+              </button>
               <div className="flex justify-center mb-4">
                 <AriaCharacter outfit={currentOutfit} emotion="happy" />
               </div>

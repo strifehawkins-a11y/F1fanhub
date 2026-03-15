@@ -12,6 +12,7 @@ import ArticlesPage from "@/pages/ArticlesPage";
 import ArticleDetailPage from "@/pages/ArticleDetailPage";
 import LeaderboardPage from "@/pages/LeaderboardPage";
 import NovelPage from "@/pages/NovelPage";
+import CharacterCreatorPage from "@/pages/CharacterCreatorPage";
 import AdminPage from "@/pages/AdminPage";
 import StandingsPage from "@/pages/StandingsPage";
 import NotFound from "@/pages/not-found";
@@ -31,6 +32,7 @@ function AuthenticatedApp() {
         <Route path="/articles/:id" component={ArticleDetailPage} />
         <Route path="/leaderboard" component={LeaderboardPage} />
         <Route path="/novel" component={NovelPage} />
+        <Route path="/creator" component={CharacterCreatorPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFound} />
       </Switch>
