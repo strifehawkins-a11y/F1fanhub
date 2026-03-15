@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/Landing";
 import LoginPage from "@/pages/LoginPage";
-import RegisterPage from "@/pages/RegisterPage";
 import Dashboard from "@/pages/Dashboard";
 import QuizPage from "@/pages/QuizPage";
 import ForumPage from "@/pages/ForumPage";
@@ -56,7 +55,6 @@ function Router() {
 
   if (!isAuthenticated) {
     if (location === "/login") return <LoginPage />;
-    if (location === "/register") return <RegisterPage />;
     return <Landing />;
   }
 
