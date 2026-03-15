@@ -12,57 +12,80 @@ import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
 
+// Collect all equipped items across every category
+function getEquippedItems(outfit: string[]) {
+  return OUTFIT_CATEGORIES.flatMap((cat) =>
+    cat.items.filter((item) => outfit.includes(item.id))
+  );
+}
+
+// Merge CSS filters from all equipped items
+function mergeFilters(items: ReturnType<typeof getEquippedItems>): string {
+  const filters = items.map((i) => (i as any).filter || "none").filter((f) => f !== "none");
+  return filters.length ? filters.join(" ") : "none";
+}
+
 // Bea character component - AI portrait
 function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string }) {
+  const allItems = getEquippedItems(outfit);
   const suitItem = OUTFIT_CATEGORIES[0].items.find((i) => outfit.includes(i.id)) || OUTFIT_CATEGORIES[0].items[0];
+  const accItem = OUTFIT_CATEGORIES.find(c => c.id === "accessory")?.items.find(i => outfit.includes(i.id));
+  const combinedFilter = mergeFilters(allItems);
 
+  // Overlays from each equipped item
+  const overlays = allItems.map((i) => (i as any).overlay || "transparent").filter(o => o !== "transparent");
+
+  // Main glow from suit item (emotion-aware)
   const emotionGlow: Record<string, string> = {
-    happy: "0 0 40px 12px #FFD70066",
-    nervous: "0 0 40px 12px #FFA50066",
-    determined: "0 0 40px 12px #CC000066",
-    sad: "0 0 40px 12px #6B9BD266",
-    excited: "0 0 40px 12px #FFD70066",
-    loving: "0 0 40px 12px #FF69B466",
-    angry: "0 0 40px 12px #FF450066",
-    default: "0 0 30px 8px #ffffff22",
+    happy:     "0 0 40px 12px #FFD70066",
+    nervous:   "0 0 40px 12px #FFA50066",
+    determined:"0 0 40px 12px #CC000066",
+    sad:       "0 0 40px 12px #6B9BD266",
+    excited:   "0 0 40px 12px #FFD70066",
+    loving:    "0 0 40px 12px #FF69B466",
+    angry:     "0 0 40px 12px #FF450066",
+    default:   "0 0 30px 8px #ffffff22",
   };
-
-  const suitTint: Record<string, string> = {
-    happy: "#FFD70015",
-    nervous: "#FFA50015",
-    determined: "#CC000015",
-    sad: "#6B9BD215",
-    excited: "#FFD70015",
-    loving: "#FF69B415",
-    default: "transparent",
-  };
+  const itemGlow = (suitItem as any).glow || "#CC000055";
 
   return (
     <div className="relative flex flex-col items-center" style={{ width: 160, height: 280 }}>
-      {/* Outfit-colored rim glow */}
+      {/* Item-colored rim glow */}
       <div
         className="absolute inset-0 rounded-2xl pointer-events-none z-0"
-        style={{ boxShadow: `0 0 32px 8px ${suitItem.accent}44` }}
+        style={{ boxShadow: `0 0 36px 10px ${itemGlow}` }}
       />
 
-      {/* Character image */}
+      {/* Character image — combined CSS filters from all equipped items */}
       <img
         src={ariaVossImage}
         alt="Bea Voss"
-        className="relative z-10 h-full w-full object-cover object-top rounded-2xl"
+        className="relative z-10 h-full w-full object-cover object-top rounded-2xl transition-all duration-700"
         style={{
           boxShadow: emotionGlow[emotion] || emotionGlow.default,
-          filter: `drop-shadow(0 0 8px ${suitItem.accent}88)`,
+          filter: combinedFilter !== "none"
+            ? `${combinedFilter} drop-shadow(0 0 8px ${itemGlow})`
+            : `drop-shadow(0 0 8px ${(suitItem as any).accent}88)`,
         }}
       />
 
-      {/* Suit-color tint overlay */}
-      <div
-        className="absolute inset-0 rounded-2xl z-20 pointer-events-none"
-        style={{ background: suitTint[emotion] || "transparent", mixBlendMode: "color" }}
-      />
+      {/* Colour overlay layers — one per equipped item */}
+      {overlays.map((col, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 rounded-2xl z-20 pointer-events-none transition-all duration-700"
+          style={{ background: col, mixBlendMode: "color", opacity: 0.7 }}
+        />
+      ))}
 
-      {/* Emotion badge */}
+      {/* Accessory emoji badge (top-left) */}
+      {accItem && (accItem as any).emoji && (
+        <div className="absolute -top-2 -left-2 z-40 text-xl drop-shadow-lg select-none">
+          {(accItem as any).emoji}
+        </div>
+      )}
+
+      {/* Emotion badge (top-right) */}
       {(emotion === "happy" || emotion === "excited" || emotion === "loving") && (
         <div className="absolute -top-2 -right-2 z-30">
           <Heart className="w-6 h-6 text-pink-400 drop-shadow animate-pulse" />
@@ -79,9 +102,9 @@ function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string 
         </div>
       )}
 
-      {/* Outfit label chip */}
+      {/* Outfit label chip — shows active suit */}
       <div
-        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full font-racing text-[9px] font-bold tracking-wider"
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full font-racing text-[9px] font-bold tracking-wider whitespace-nowrap"
         style={{ background: suitItem.color, color: suitItem.accent, border: `1px solid ${suitItem.accent}66` }}
       >
         {suitItem.label}
@@ -142,13 +165,20 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
               const canAfford = !item.cost || (profile?.totalPoints || 0) >= item.cost;
               const isFree = item.cost === 0;
 
+              const itemAny = item as any;
+              const hasEffect = itemAny.filter && itemAny.filter !== "none";
+              const accEmoji = itemAny.emoji || "";
+
               return (
                 <button
                   key={item.id}
                   data-testid={`button-outfit-${item.id}`}
                   className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                    isEquipped ? "border-primary bg-primary/10" :
-                    "border-card-border bg-card hover-elevate"
+                    isEquipped
+                      ? "border-primary bg-primary/10"
+                      : canAfford || isFree
+                      ? "border-white/10 bg-white/5 hover:border-primary/40 hover:bg-primary/5"
+                      : "border-white/5 bg-white/3 opacity-50"
                   }`}
                   onClick={() => {
                     if (isFree || isEquipped) {
@@ -170,22 +200,37 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
                     }
                   }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-md flex-shrink-0"
-                    style={{ background: item.color, border: `2px solid ${item.accent}` }}
-                  />
-                  <div className="flex-1 text-left">
-                    <p className="font-racing text-xs font-bold text-foreground">{item.label}</p>
-                    {item.cost > 0 ? (
-                      <p className={`text-[10px] ${canAfford ? "text-yellow-500" : "text-destructive"}`}>
-                        {item.cost.toLocaleString()} pts
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-green-500">Free</p>
-                    )}
+                  {/* Colour swatch with overlay preview */}
+                  <div className="relative w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
+                    style={{
+                      background: item.color,
+                      border: `2px solid ${item.accent}`,
+                      filter: hasEffect ? itemAny.filter : "none",
+                    }}
+                  >
+                    {accEmoji || null}
                   </div>
-                  {isEquipped && <Check className="w-4 h-4 text-primary" />}
-                  {!isFree && !isEquipped && !canAfford && <Lock className="w-4 h-4 text-muted-foreground" />}
+
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="font-racing text-xs font-bold text-white leading-tight">{item.label}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {item.cost > 0 ? (
+                        <span className={`text-[10px] font-racing font-bold ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
+                          <Zap className="w-2.5 h-2.5 inline mr-0.5" />
+                          {item.cost.toLocaleString()} pts
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-racing text-green-400">Free</span>
+                      )}
+                      {hasEffect && (
+                        <span className="text-[9px] font-racing text-primary/60 bg-primary/10 rounded px-1.5 py-0.5">
+                          visual fx
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isEquipped && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
+                  {!isFree && !isEquipped && !canAfford && <Lock className="w-3.5 h-3.5 text-white/30 flex-shrink-0" />}
                 </button>
               );
             })}
@@ -199,7 +244,7 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
 export default function NovelPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [currentOutfit, setCurrentOutfit] = useState<string[]>(["suit_default", "casual_default", "helmet_default"]);
+  const [currentOutfit, setCurrentOutfit] = useState<string[]>(["suit_default", "casual_default", "helmet_default", "hair_default", "acc_default"]);
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [choiceResponse, setChoiceResponse] = useState<string | null>(null);
