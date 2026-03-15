@@ -28,41 +28,32 @@ function getCategoryFromTags(tags: string[] | null): string {
 
 function VideoBanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoEnded, setVideoEnded] = useState(false);
+
+  const handleEnded = () => {
+    const v = videoRef.current;
+    if (v) {
+      v.currentTime = 0;
+      v.pause();
+    }
+  };
 
   return (
-    <div
-      className="relative rounded-2xl overflow-hidden mb-6"
-      style={{
-        height: videoEnded ? 0 : undefined,
-        transition: "height 1s ease-out",
-      }}
-    >
-      <div
-        className="relative overflow-hidden rounded-2xl"
-        style={{
-          opacity: videoEnded ? 0 : 1,
-          pointerEvents: videoEnded ? "none" : undefined,
-          maxHeight: videoEnded ? 0 : 320,
-          transition: "opacity 1.2s ease-out, max-height 1.4s ease-out",
-        } as any}
-      >
-        {/* Video */}
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          autoPlay
-          muted
-          playsInline
-          onEnded={() => setVideoEnded(true)}
-          className="w-full object-cover"
-          style={{ maxHeight: 320 }}
-        />
+    <div className="relative rounded-2xl overflow-hidden mb-6">
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        autoPlay
+        muted
+        playsInline
+        onEnded={handleEnded}
+        className="w-full object-cover"
+        style={{ maxHeight: 320 }}
+      />
 
-        {/* Cinematic overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
-      </div>
+      {/* Cinematic overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
     </div>
   );
 }
