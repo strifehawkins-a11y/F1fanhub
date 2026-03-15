@@ -1,32 +1,206 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours, differenceInMinutes } from "date-fns";
-import { Flag, Trophy, MessageSquare, BookOpen, Zap, Heart, ChevronRight, Timer, Star } from "lucide-react";
-import beaVossImage from "@assets/bea-voss.png";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Race, UserProfile } from "@shared/schema";
+import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 
-function getRaceCountdown(raceDate: string) {
-  const now = new Date();
-  const date = parseISO(raceDate);
-  const days = differenceInDays(date, now);
-  const hours = differenceInHours(date, now) % 24;
-  const minutes = differenceInMinutes(date, now) % 60;
-  if (days < 0) return null;
-  if (days === 0) return `${hours}h ${minutes}m`;
-  return `${days}d ${hours}h`;
+function estimateReadTime(content: string) {
+  const words = content?.split(/\s+/).length || 0;
+  return Math.max(1, Math.round(words / 200));
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "completed") return <Badge variant="secondary" className="text-[10px] font-racing">Completed</Badge>;
-  if (status === "live") return <Badge className="text-[10px] font-racing bg-green-600">LIVE</Badge>;
-  return <Badge variant="outline" className="text-[10px] font-racing text-primary border-primary">Upcoming</Badge>;
+function getCategoryFromTags(tags: string[] | null): string {
+  if (!tags || tags.length === 0) return "NEWS";
+  const t = tags[0].toUpperCase();
+  if (t.includes("REPORT")) return "RACE REPORT";
+  if (t.includes("PREVIEW")) return "PREVIEW";
+  if (t.includes("ANALYSIS") || t.includes("TECHNICAL")) return "ANALYSIS";
+  if (t.includes("INTERVIEW")) return "INTERVIEW";
+  if (t.includes("REGULATION")) return "REGULATIONS";
+  return "NEWS";
+}
+
+function NextRaceWidget({ races }: { races: Race[] }) {
+  const upcoming = races?.filter(r => r.status !== "completed").sort((a, b) =>
+    new Date(a.raceDate).getTime() - new Date(b.raceDate).getTime()
+  );
+  const liveRace = races?.find(r => r.status === "live");
+  const next = liveRace || upcoming?.[0];
+  if (!next) return null;
+
+  const now = new Date();
+  const date = parseISO(next.raceDate);
+  const days = differenceInDays(date, now);
+  const hours = differenceInHours(date, now) % 24;
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <Flag className="w-3.5 h-3.5 text-primary" />
+        <span className="font-racing text-xs font-bold tracking-widest uppercase text-foreground">
+          {next.status === "live" ? "Live Race" : "Next Race"}
+        </span>
+        {next.status === "live" && (
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="font-racing text-[9px] text-green-500 tracking-widest">LIVE</span>
+          </span>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-3xl">{next.flagEmoji}</span>
+          <div>
+            <p className="font-racing text-sm font-black text-foreground leading-tight">{next.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{next.circuit}</p>
+            <p className="text-xs text-muted-foreground">{format(date, "d MMM yyyy")}</p>
+          </div>
+        </div>
+        {next.status !== "live" && days >= 0 && (
+          <div className="mt-3 flex items-center gap-1.5">
+            <Timer className="w-3 h-3 text-primary" />
+            <span className="font-racing text-xs text-primary font-bold">
+              {days > 0 ? `${days}d ${hours}h` : `${hours}h`} to go
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniStandings({ drivers, constructors }: { drivers: DriverStanding[]; constructors: ConstructorStanding[] }) {
+  const top5Drivers = drivers?.slice(0, 5) || [];
+  const top5Constructors = constructors?.slice(0, 5) || [];
+
+  return (
+    <>
+      {/* Drivers */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-3.5 h-3.5 text-primary" />
+            <span className="font-racing text-xs font-bold tracking-widest uppercase text-foreground">Drivers</span>
+          </div>
+          <Link href="/standings">
+            <span className="font-racing text-[10px] text-primary hover:underline tracking-wide">Full Table</span>
+          </Link>
+        </div>
+        <div className="divide-y divide-border/50">
+          {top5Drivers.map((d) => (
+            <div key={d.id} className="flex items-center gap-3 px-4 py-2.5">
+              <span className={`font-racing text-xs font-black w-4 text-center ${
+                d.position === 1 ? "text-yellow-400" : d.position === 2 ? "text-slate-400" : d.position === 3 ? "text-orange-500" : "text-muted-foreground"
+              }`}>{d.position}</span>
+              <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: d.teamColor }} />
+              <div className="flex-1 min-w-0">
+                <p className="font-racing text-xs font-bold text-foreground truncate">{d.driverCode}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{d.teamName}</p>
+              </div>
+              <span className="font-racing text-xs font-black text-foreground tabular-nums">{d.points}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Constructors */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-3.5 h-3.5 text-primary" />
+            <span className="font-racing text-xs font-bold tracking-widest uppercase text-foreground">Constructors</span>
+          </div>
+          <Link href="/standings?tab=constructors">
+            <span className="font-racing text-[10px] text-primary hover:underline tracking-wide">Full Table</span>
+          </Link>
+        </div>
+        <div className="divide-y divide-border/50">
+          {top5Constructors.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+              <span className={`font-racing text-xs font-black w-4 text-center ${
+                c.position === 1 ? "text-yellow-400" : c.position === 2 ? "text-slate-400" : c.position === 3 ? "text-orange-500" : "text-muted-foreground"
+              }`}>{c.position}</span>
+              <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: c.teamColor }} />
+              <p className="font-racing text-xs font-bold text-foreground flex-1 truncate">{c.teamName}</p>
+              <span className="font-racing text-xs font-black text-foreground tabular-nums">{c.points}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function HeroArticle({ article }: { article: any }) {
+  const category = getCategoryFromTags(article.tags);
+  const readTime = estimateReadTime(article.content);
+  return (
+    <Link href={`/articles/${article.id}`}>
+      <div
+        data-testid={`hero-article-${article.id}`}
+        className="relative rounded-2xl overflow-hidden cursor-pointer group min-h-[300px] md:min-h-[380px] flex flex-col justify-end"
+        style={{
+          background: article.imageUrl
+            ? `url(${article.imageUrl}) center/cover`
+            : "linear-gradient(135deg, #0d0d14 0%, #1a0814 40%, #2d0a10 100%)"
+        }}
+      >
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
+        {/* Left accent bar */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+
+        <div className="relative p-6">
+          <span className="inline-block font-racing text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded mb-3">
+            {category}
+          </span>
+          <h1 className="font-racing text-2xl md:text-3xl font-black text-white leading-tight mb-3 group-hover:text-primary/90 transition-colors">
+            {article.title}
+          </h1>
+          <p className="text-white/70 text-sm leading-relaxed line-clamp-2 mb-4">{article.excerpt}</p>
+          <div className="flex items-center gap-4 text-white/50 text-xs">
+            <span className="font-racing">{article.username || "F1 Paddock"}</span>
+            <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM yyyy") : ""}</span>
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{readTime} min read</span>
+            <span className="flex items-center gap-1 ml-auto"><MessageSquare className="w-3 h-3" />{article.commentCount || 0}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function ArticleCard({ article }: { article: any }) {
+  const category = getCategoryFromTags(article.tags);
+  const readTime = estimateReadTime(article.content);
+  return (
+    <Link href={`/articles/${article.id}`}>
+      <div
+        data-testid={`card-article-${article.id}`}
+        className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all group h-full flex flex-col"
+      >
+        {/* Top category stripe */}
+        <div className="h-0.5 bg-gradient-to-r from-primary/80 to-primary/20" />
+        <div className="p-4 flex flex-col flex-1">
+          <span className="inline-block font-racing text-[9px] font-bold tracking-[0.15em] uppercase text-primary mb-2">{category}</span>
+          <h3 className="font-racing text-sm font-black text-foreground leading-tight line-clamp-3 mb-2 flex-1 group-hover:text-primary transition-colors">
+            {article.title}
+          </h3>
+          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 mb-3">{article.excerpt}</p>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground border-t border-border/50 pt-2 mt-auto">
+            <span className="font-racing truncate flex-1">{article.username || "F1 Paddock"}</span>
+            <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM") : ""}</span>
+            <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{readTime}m</span>
+            <span className="flex items-center gap-0.5"><MessageSquare className="w-2.5 h-2.5" />{article.commentCount || 0}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 export default function Dashboard() {
@@ -34,262 +208,91 @@ export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
-    queryKey: ["/api/profile"],
-  });
-
+  const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const { data: races } = useQuery<Race[]>({
     queryKey: ["/api/races", 2026],
     queryFn: () => fetch(`/api/races?season=2026`).then(r => r.json()),
   });
-
-  const { data: articles } = useQuery<any[]>({
-    queryKey: ["/api/articles"],
-  });
+  const { data: articles, isLoading: articlesLoading } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const { data: driverStandings } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
+  const { data: constructorStandings } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
 
   const claimMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/profile/claim-daily"),
     onSuccess: (data: any) => {
-      if (data.success) {
-        toast({ title: "5,000 Points Claimed!", description: "Come back tomorrow for more." });
-        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      } else {
-        toast({ title: "Already Claimed", description: data.message, variant: "destructive" });
-      }
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "+5,000 Points Claimed!", description: "Come back tomorrow for your next reward." });
     },
+    onError: (err: any) => toast({ title: "Already Claimed", description: "You've already claimed your points today.", variant: "destructive" }),
   });
 
-  const upcomingRace = races?.find((r) => r.status === "upcoming");
-  const nextRaces = races?.filter((r) => r.status === "upcoming").slice(0, 5) || [];
-  const recentArticles = articles?.slice(0, 2) || [];
-
-  const canClaim = !profile?.lastDailyClaimAt ||
-    (new Date().getTime() - new Date(profile.lastDailyClaimAt).getTime()) >= 24 * 60 * 60 * 1000;
+  const heroArticle = articles?.[0];
+  const gridArticles = articles?.slice(1) || [];
 
   return (
-    <div className="px-4 py-5 space-y-6">
-      {/* Welcome Header */}
+    <div className="space-y-6">
+      {/* Top bar: season label + daily claim */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-muted-foreground font-racing tracking-widest uppercase">Welcome back</p>
-          <h2 className="font-racing text-2xl font-black text-foreground tracking-tight">
-            {user?.firstName || "Pilot"}
-          </h2>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="font-racing text-[10px] text-primary tracking-[0.25em] uppercase font-bold">2026 Season</span>
+          </div>
+          <h1 className="font-racing text-2xl font-black text-foreground tracking-tight mt-0.5">F1 Paddock</h1>
         </div>
-        <Avatar className="w-12 h-12 border-2 border-primary">
-          <AvatarImage src={user?.profileImageUrl || ""} />
-          <AvatarFallback className="bg-primary text-primary-foreground font-racing font-black text-lg">
-            {(user?.firstName || "P").charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        {profile && (
+          <button
+            onClick={() => claimMutation.mutate()}
+            disabled={claimMutation.isPending}
+            data-testid="button-claim-daily"
+            className="flex items-center gap-2 bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary rounded-lg px-3 py-2 transition-all font-racing text-xs font-bold"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            +5,000 Daily
+          </button>
+        )}
       </div>
 
-      {/* Points & Daily Claim */}
-      <Card className="relative overflow-hidden bg-card border-card-border p-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-        <div className="relative flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground font-racing tracking-widest uppercase mb-1">Your Points</p>
-            <p className="font-racing text-3xl font-black text-foreground">
-              {profileLoading ? "—" : (profile?.totalPoints || 0).toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Lifetime: {(profile?.lifetimePoints || 0).toLocaleString()}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <Button
-              size="sm"
-              onClick={() => claimMutation.mutate()}
-              disabled={!canClaim || claimMutation.isPending}
-              className="font-racing text-xs tracking-wide"
-              data-testid="button-claim-daily"
-            >
-              <Zap className="w-3 h-3 mr-1.5" />
-              {canClaim ? "Claim 5,000" : "Claimed"}
-            </Button>
-            <p className="text-[10px] text-muted-foreground">Daily reward</p>
-          </div>
-        </div>
-      </Card>
+      {/* Main layout: content + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+        {/* Left: news */}
+        <div className="space-y-4">
+          {/* Hero article */}
+          {articlesLoading ? (
+            <Skeleton className="h-80 w-full rounded-2xl" />
+          ) : heroArticle ? (
+            <HeroArticle article={heroArticle} />
+          ) : null}
 
-      {/* Bea's Story Teaser */}
-      <Link href="/novel">
-        <Card
-          data-testid="card-novel-teaser"
-          className="relative overflow-hidden border-card-border p-4 cursor-pointer hover-elevate"
-          style={{ background: "linear-gradient(135deg, hsl(var(--card)), hsl(0 60% 12%))" }}
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/10 -translate-y-8 translate-x-8 pointer-events-none" />
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4 text-primary" />
-                <span className="font-racing text-xs text-primary tracking-widest uppercase font-bold">Visual Novel</span>
-              </div>
-              <h3 className="font-racing text-lg font-black text-foreground leading-tight mb-1">
-                Bea's Racing Dream
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Help rookie driver Bea Voss navigate the highs and lows of her debut F1 season.
-              </p>
+          {/* Article grid */}
+          {articlesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
             </div>
-            {/* Bea portrait */}
-            <div className="w-16 h-20 flex-shrink-0 rounded-lg overflow-hidden border border-primary/30"
-              style={{ background: "linear-gradient(180deg, hsl(0 60% 12%) 0%, hsl(220 10% 8%) 100%)" }}>
-              <img
-                src={beaVossImage}
-                alt="Bea Voss"
-                className="w-full h-full object-cover object-top"
-              />
+          ) : gridArticles.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {gridArticles.map(article => <ArticleCard key={article.id} article={article} />)}
             </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <Badge variant="outline" className="text-[10px] font-racing border-primary text-primary">
-              5 Chapters
-            </Badge>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </div>
-        </Card>
-      </Link>
+          ) : null}
 
-      {/* Next Race Countdown */}
-      {upcomingRace && (
-        <div>
-          <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2">
-            <Flag className="w-3 h-3" />
-            Next Race
-          </h3>
-          <Card className="border-card-border p-4 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-lg" />
-            <div className="pl-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-racing text-base font-black text-foreground leading-tight">
-                    {upcomingRace.flagEmoji} {upcomingRace.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{upcomingRace.circuit}</p>
-                  <p className="text-xs text-muted-foreground">{format(parseISO(upcomingRace.raceDate), "MMM d, yyyy")}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center gap-1 text-primary">
-                    <Timer className="w-3 h-3" />
-                    <span className="font-racing text-sm font-bold">
-                      {getRaceCountdown(upcomingRace.raceDate) || "Now!"}
-                    </span>
-                  </div>
-                  {upcomingRace.hasSprint && (
-                    <Badge className="mt-1 text-[9px] font-racing bg-yellow-500 text-black">Sprint</Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div>
-        <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/quiz">
-            <Card
-              data-testid="card-quiz-action"
-              className="border-card-border p-4 cursor-pointer hover-elevate"
-            >
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                <Trophy className="w-5 h-5 text-primary" />
-              </div>
-              <p className="font-racing text-sm font-bold text-foreground">Take Quiz</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Earn points</p>
-            </Card>
-          </Link>
-          <Link href="/forum">
-            <Card
-              data-testid="card-forum-action"
-              className="border-card-border p-4 cursor-pointer hover-elevate"
-            >
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                <MessageSquare className="w-5 h-5 text-primary" />
-              </div>
-              <p className="font-racing text-sm font-bold text-foreground">Race Forum</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Discuss GPs</p>
-            </Card>
-          </Link>
-        </div>
-      </div>
-
-      {/* Race Calendar */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-2">
-            <Flag className="w-3 h-3" /> 2026 Calendar
-          </h3>
-          <Link href="/forum">
-            <button className="text-[11px] text-primary font-racing tracking-wide" data-testid="link-view-calendar">
-              View All
-            </button>
-          </Link>
-        </div>
-        <div className="space-y-2">
-          {nextRaces.map((race) => (
-            <Link key={race.id} href={`/forum/${race.id}`}>
-              <div
-                data-testid={`card-race-${race.id}`}
-                className="flex items-center justify-between p-3 bg-card rounded-lg border border-card-border cursor-pointer hover-elevate"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">{race.flagEmoji || "🏁"}</span>
-                  <div>
-                    <p className="font-racing text-sm font-bold text-foreground leading-tight">{race.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{format(parseISO(race.raceDate), "MMM d")}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={race.status} />
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Latest Articles */}
-      {recentArticles.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-2">
-              <BookOpen className="w-3 h-3" /> Latest News
-            </h3>
+          {articles && articles.length > 0 && (
             <Link href="/articles">
-              <button className="text-[11px] text-primary font-racing tracking-wide" data-testid="link-view-articles">
-                All Articles
+              <button className="w-full py-3 border border-border rounded-xl font-racing text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all flex items-center justify-center gap-2">
+                View All Articles <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </Link>
-          </div>
-          <div className="space-y-2">
-            {recentArticles.map((article) => (
-              <Link key={article.id} href={`/articles/${article.id}`}>
-                <Card
-                  data-testid={`card-article-${article.id}`}
-                  className="border-card-border p-3 cursor-pointer hover-elevate"
-                >
-                  <p className="font-racing text-sm font-bold text-foreground leading-tight line-clamp-2 mb-1">
-                    {article.title}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    {article.tags?.slice(0, 2).map((tag: string) => (
-                      <Badge key={tag} variant="secondary" className="text-[9px] font-racing">{tag}</Badge>
-                    ))}
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          )}
         </div>
-      )}
+
+        {/* Right: sidebar */}
+        <div className="space-y-4">
+          {races && <NextRaceWidget races={races} />}
+          <MiniStandings
+            drivers={driverStandings || []}
+            constructors={constructorStandings || []}
+          />
+        </div>
+      </div>
     </div>
   );
 }

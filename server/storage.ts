@@ -3,10 +3,12 @@ import { eq, desc, asc, and, sql } from "drizzle-orm";
 import {
   userProfile, races, quizQuestions, quizAttempts,
   forumPosts, forumComments, articles, articleComments, novelProgress,
+  driverStandings, constructorStandings,
   type UserProfile, type Race, type QuizQuestion, type QuizAttempt,
   type ForumPost, type ForumComment, type Article, type ArticleComment,
   type NovelProgress, type InsertForumPost, type InsertForumComment,
   type InsertArticle, type InsertArticleComment,
+  type DriverStanding, type ConstructorStanding,
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 
@@ -57,6 +59,12 @@ export interface IStorage {
   // Admin
   setAdminStatus(userId: string, isAdmin: boolean): Promise<void>;
   isAdmin(userId: string): Promise<boolean>;
+
+  // Standings
+  getDriverStandings(season?: number): Promise<DriverStanding[]>;
+  updateDriverStanding(id: number, data: Partial<DriverStanding>): Promise<DriverStanding | undefined>;
+  getConstructorStandings(season?: number): Promise<ConstructorStanding[]>;
+  updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -426,6 +434,28 @@ export class DatabaseStorage implements IStorage {
   async isAdmin(userId: string): Promise<boolean> {
     const profile = await this.getUserProfile(userId);
     return profile?.isAdmin ?? false;
+  }
+
+  async getDriverStandings(season: number = 2026): Promise<DriverStanding[]> {
+    return db.select().from(driverStandings)
+      .where(eq(driverStandings.season, season))
+      .orderBy(asc(driverStandings.position));
+  }
+
+  async updateDriverStanding(id: number, data: Partial<DriverStanding>): Promise<DriverStanding | undefined> {
+    const [result] = await db.update(driverStandings).set(data).where(eq(driverStandings.id, id)).returning();
+    return result;
+  }
+
+  async getConstructorStandings(season: number = 2026): Promise<ConstructorStanding[]> {
+    return db.select().from(constructorStandings)
+      .where(eq(constructorStandings.season, season))
+      .orderBy(asc(constructorStandings.position));
+  }
+
+  async updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined> {
+    const [result] = await db.update(constructorStandings).set(data).where(eq(constructorStandings.id, id)).returning();
+    return result;
   }
 }
 

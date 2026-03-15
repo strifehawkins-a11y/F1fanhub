@@ -324,6 +324,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ---- STANDINGS ----
+  app.get("/api/standings/drivers", async (req, res) => {
+    try {
+      const season = req.query.season ? Number(req.query.season) : 2026;
+      const standings = await storage.getDriverStandings(season);
+      res.json(standings);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch driver standings" });
+    }
+  });
+
+  app.get("/api/standings/constructors", async (req, res) => {
+    try {
+      const season = req.query.season ? Number(req.query.season) : 2026;
+      const standings = await storage.getConstructorStandings(season);
+      res.json(standings);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch constructor standings" });
+    }
+  });
+
+  app.patch("/api/standings/drivers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const updated = await storage.updateDriverStanding(Number(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update driver standing" });
+    }
+  });
+
+  app.patch("/api/standings/constructors/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const updated = await storage.updateConstructorStanding(Number(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update constructor standing" });
+    }
+  });
+
   // Seed the database on startup
   await seedDatabase();
 

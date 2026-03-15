@@ -103,11 +103,38 @@ export const localCredentials = pgTable("local_credentials", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const driverStandings = pgTable("driver_standings", {
+  id: serial("id").primaryKey(),
+  position: integer("position").notNull(),
+  driverName: text("driver_name").notNull(),
+  driverCode: text("driver_code").notNull(),
+  nationality: text("nationality").notNull(),
+  flagEmoji: text("flag_emoji").notNull(),
+  teamName: text("team_name").notNull(),
+  teamColor: text("team_color").notNull(),
+  points: integer("points").default(0).notNull(),
+  wins: integer("wins").default(0).notNull(),
+  podiums: integer("podiums").default(0).notNull(),
+  season: integer("season").default(2026).notNull(),
+});
+
+export const constructorStandings = pgTable("constructor_standings", {
+  id: serial("id").primaryKey(),
+  position: integer("position").notNull(),
+  teamName: text("team_name").notNull(),
+  teamColor: text("team_color").notNull(),
+  points: integer("points").default(0).notNull(),
+  wins: integer("wins").default(0).notNull(),
+  season: integer("season").default(2026).notNull(),
+});
+
 export const insertForumPostSchema = createInsertSchema(forumPosts).omit({ id: true, createdAt: true });
 export const insertForumCommentSchema = createInsertSchema(forumComments).omit({ id: true, createdAt: true });
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true, updatedAt: true });
 export const insertArticleCommentSchema = createInsertSchema(articleComments).omit({ id: true, createdAt: true });
 export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({ id: true, completedAt: true });
+export const insertDriverStandingSchema = createInsertSchema(driverStandings).omit({ id: true });
+export const insertConstructorStandingSchema = createInsertSchema(constructorStandings).omit({ id: true });
 
 export type UserProfile = typeof userProfile.$inferSelect;
 export type Race = typeof races.$inferSelect;
@@ -118,9 +145,13 @@ export type ForumComment = typeof forumComments.$inferSelect;
 export type Article = typeof articles.$inferSelect;
 export type ArticleComment = typeof articleComments.$inferSelect;
 export type NovelProgress = typeof novelProgress.$inferSelect;
+export type DriverStanding = typeof driverStandings.$inferSelect;
+export type ConstructorStanding = typeof constructorStandings.$inferSelect;
 
 export type InsertForumPost = z.infer<typeof insertForumPostSchema>;
 export type InsertForumComment = z.infer<typeof insertForumCommentSchema>;
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
 export type InsertArticleComment = z.infer<typeof insertArticleCommentSchema>;
 export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
+export type InsertDriverStanding = z.infer<typeof insertDriverStandingSchema>;
+export type InsertConstructorStanding = z.infer<typeof insertConstructorStandingSchema>;

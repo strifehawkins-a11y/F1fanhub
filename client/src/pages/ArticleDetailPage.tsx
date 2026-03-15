@@ -2,16 +2,28 @@ import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowLeft, MessageSquare, Send, Trash2, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, MessageSquare, Send, Trash2, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+
+function getCategoryFromTags(tags: string[] | null): string {
+  if (!tags || tags.length === 0) return "NEWS";
+  const t = tags[0].toUpperCase();
+  if (t.includes("REPORT")) return "RACE REPORT";
+  if (t.includes("PREVIEW")) return "PREVIEW";
+  if (t.includes("ANALYSIS") || t.includes("TECHNICAL")) return "ANALYSIS";
+  if (t.includes("INTERVIEW")) return "INTERVIEW";
+  if (t.includes("REGULATION")) return "REGULATIONS";
+  return "NEWS";
+}
+
+function estimateReadTime(content: string) {
+  const words = content?.split(/\s+/).length || 0;
+  return Math.max(1, Math.round(words / 200));
+}
 
 export default function ArticleDetailPage() {
   const [, params] = useRoute("/articles/:id");
@@ -57,130 +69,168 @@ export default function ArticleDetailPage() {
 
   if (articleLoading) {
     return (
-      <div className="px-4 py-6 space-y-4">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-10 w-full" />
+      <div className="max-w-3xl mx-auto space-y-4">
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-12 w-full" />
         <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   if (!article) {
     return (
-      <div className="px-4 py-6 text-center text-muted-foreground">
-        <p className="font-racing">Article not found.</p>
-        <Link href="/articles"><Button className="mt-4 font-racing" size="sm">Back to Articles</Button></Link>
+      <div className="max-w-3xl mx-auto text-center py-20 text-muted-foreground">
+        <p className="font-racing text-lg mb-4">Article not found.</p>
+        <Link href="/articles">
+          <button className="font-racing text-sm text-primary hover:underline">Back to Articles</button>
+        </Link>
       </div>
     );
   }
 
+  const category = getCategoryFromTags(article.tags);
+  const readTime = estimateReadTime(article.content);
+
   return (
-    <div className="px-4 py-5 space-y-5">
+    <div className="max-w-3xl mx-auto space-y-8">
+      {/* Back */}
       <Link href="/articles">
-        <button className="flex items-center gap-1.5 text-muted-foreground" data-testid="button-back-articles">
+        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-articles">
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-racing">Articles</span>
+          <span className="font-racing text-sm">All Articles</span>
         </button>
       </Link>
 
-      {/* Article Header */}
+      {/* Article header */}
       <div>
-        {article.tags?.length > 0 && (
-          <div className="flex gap-1.5 mb-3 flex-wrap">
-            {article.tags.map((tag: string) => (
-              <Badge key={tag} variant="secondary" className="text-[10px] font-racing">{tag}</Badge>
-            ))}
-          </div>
-        )}
-        <h1 className="font-racing text-2xl font-black text-foreground leading-tight">{article.title}</h1>
-        <div className="flex items-center gap-3 mt-3">
-          <Avatar className="w-7 h-7">
+        <span className="inline-block font-racing text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded mb-4">
+          {category}
+        </span>
+        <h1 className="font-racing text-2xl md:text-4xl font-black text-foreground leading-tight tracking-tight mb-4">
+          {article.title}
+        </h1>
+
+        {/* Author + meta */}
+        <div className="flex items-center gap-4 pb-5 border-b border-border">
+          <Avatar className="w-9 h-9">
             <AvatarImage src={article.profileImageUrl || ""} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-racing font-bold">
+            <AvatarFallback className="bg-primary text-white text-xs font-racing font-black">
               {(article.username || "A").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-xs font-racing font-bold text-foreground">{article.username || "Admin"}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {article.publishedAt ? format(new Date(article.publishedAt), "MMMM d, yyyy") : ""}
-            </p>
+            <p className="font-racing text-sm font-bold text-foreground">{article.username || "F1 Paddock"}</p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMMM yyyy") : ""}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{readTime} min read</span>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5 text-muted-foreground text-xs">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="font-racing">{comments?.length || 0} comments</span>
           </div>
         </div>
       </div>
 
-      {/* Article Body */}
-      <div className="prose prose-sm max-w-none text-foreground">
-        <p className="text-sm font-medium text-muted-foreground leading-relaxed italic border-l-2 border-primary pl-3 mb-4">
-          {article.excerpt}
-        </p>
-        {article.content.split("\n\n").map((para: string, i: number) => (
-          <p key={i} className="text-sm text-foreground leading-relaxed mb-3">{para}</p>
-        ))}
+      {/* Article body */}
+      <div className="space-y-5">
+        {/* Excerpt as pull quote */}
+        <blockquote className="border-l-4 border-primary pl-5 py-1">
+          <p className="text-base font-medium text-foreground/80 leading-relaxed italic">{article.excerpt}</p>
+        </blockquote>
+
+        {/* Content */}
+        <div className="space-y-4">
+          {article.content.split("\n\n").map((para: string, i: number) => (
+            <p key={i} className="text-[15px] text-foreground/90 leading-[1.8]">{para}</p>
+          ))}
+        </div>
+
+        {/* Tags */}
+        {article.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
+            {article.tags.map((tag: string) => (
+              <span key={tag} className="font-racing text-[10px] bg-primary/5 border border-primary/20 text-primary/80 rounded-full px-3 py-1">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Comments Section */}
-      <div className="pt-4 border-t border-border">
-        <h3 className="font-racing text-xs text-muted-foreground tracking-widest uppercase mb-4 flex items-center gap-2">
-          <MessageSquare className="w-3 h-3" />
+      {/* Comments */}
+      <div className="pt-6 border-t border-border space-y-6">
+        <h2 className="font-racing text-lg font-black text-foreground">
           {comments?.length || 0} Comments
-        </h3>
+        </h2>
 
-        {/* Add comment */}
-        <div className="flex gap-2 mb-4">
-          <Textarea
-            placeholder="Share your thoughts..."
+        {/* Comment input */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <p className="font-racing text-xs text-muted-foreground tracking-widest uppercase">Add a Comment</p>
+          <textarea
+            placeholder="Share your thoughts on this article..."
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            className="text-sm resize-none min-h-[72px]"
+            className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none min-h-[100px]"
             data-testid="input-article-comment"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.ctrlKey && comment.trim()) {
+                commentMutation.mutate();
+              }
+            }}
           />
-          <Button
-            size="icon"
-            onClick={() => comment.trim() && commentMutation.mutate()}
-            disabled={!comment.trim() || commentMutation.isPending}
-            data-testid="button-submit-article-comment"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Ctrl+Enter to submit</span>
+            <button
+              onClick={() => comment.trim() && commentMutation.mutate()}
+              disabled={!comment.trim() || commentMutation.isPending}
+              data-testid="button-submit-article-comment"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-racing text-xs font-bold rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {commentMutation.isPending ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
         </div>
 
+        {/* Comments list */}
         {commentsLoading ? (
-          <div className="space-y-3">
-            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
           </div>
         ) : comments?.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <p className="text-sm font-racing">No comments yet. Be first!</p>
+          <div className="text-center py-10 text-muted-foreground">
+            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            <p className="font-racing text-sm">No comments yet. Be the first!</p>
           </div>
         ) : (
           <div className="space-y-4">
             {comments?.map((c) => (
-              <div key={c.id} className="flex gap-3">
-                <Avatar className="w-8 h-8 flex-shrink-0">
+              <div key={c.id} className="flex gap-3 group">
+                <Avatar className="w-9 h-9 flex-shrink-0">
                   <AvatarImage src={c.profileImageUrl || ""} />
-                  <AvatarFallback className="bg-muted text-muted-foreground text-xs font-racing">
+                  <AvatarFallback className="bg-card border border-border text-foreground text-xs font-racing font-bold">
                     {(c.username || "P").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-racing text-xs font-bold text-foreground">{c.username || "Pilot"}</span>
+                <div className="flex-1 bg-card border border-border rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-racing text-sm font-bold text-foreground">{c.username || "Pilot"}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      {c.createdAt ? format(new Date(c.createdAt), "MMM d") : ""}
+                      {c.createdAt ? format(new Date(c.createdAt), "d MMM, HH:mm") : ""}
                     </span>
                     {c.userId === (user as any)?.id && (
                       <button
                         onClick={() => deleteCommentMutation.mutate(c.id)}
-                        className="ml-auto text-muted-foreground"
+                        className="ml-auto text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
                         data-testid={`button-delete-article-comment-${c.id}`}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-foreground leading-relaxed">{c.content}</p>
+                  <p className="text-sm text-foreground/90 leading-relaxed">{c.content}</p>
                 </div>
               </div>
             ))}
