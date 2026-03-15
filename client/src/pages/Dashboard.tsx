@@ -29,7 +29,6 @@ function getCategoryFromTags(tags: string[] | null): string {
 function VideoBanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoEnded, setVideoEnded] = useState(false);
-  const [videoStarted, setVideoStarted] = useState(false);
 
   return (
     <div
@@ -55,39 +54,48 @@ function VideoBanner() {
           autoPlay
           muted
           playsInline
-          onPlay={() => setVideoStarted(true)}
           onEnded={() => setVideoEnded(true)}
           className="w-full object-cover"
           style={{ maxHeight: 320 }}
         />
 
         {/* Cinematic overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
+      </div>
+    </div>
+  );
+}
 
-        {/* Content over video */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="inline-flex items-center gap-1.5 bg-primary/90 rounded-full px-2.5 py-1 mb-2">
-                <Play className="w-2.5 h-2.5 text-white fill-white" />
-                <span className="font-racing text-[9px] text-white tracking-widest uppercase font-bold">Bea's Season · 2026</span>
-              </div>
-              <h2 className="font-racing text-xl font-black text-white leading-tight drop-shadow-lg">
-                Follow Bea Voss on the F1 grid
-              </h2>
-              <p className="text-white/70 text-xs mt-1">Visual novel · New episodes weekly</p>
+function BeaStoryCard() {
+  return (
+    <Link href="/novel">
+      <div
+        data-testid="card-bea-story"
+        className="relative rounded-xl overflow-hidden cursor-pointer group"
+        style={{ background: "linear-gradient(135deg, #1a0008 0%, #3d0015 50%, #7d0025 100%)" }}
+      >
+        {/* Shimmer accent bar */}
+        <div className="h-0.5 bg-gradient-to-r from-primary via-red-400 to-primary/20" />
+
+        <div className="p-4">
+          <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-2.5 py-1 mb-3">
+            <Play className="w-2.5 h-2.5 text-white fill-white" />
+            <span className="font-racing text-[9px] text-white/90 tracking-widest uppercase font-bold">Bea's Season · 2026</span>
+          </div>
+          <h3 className="font-racing text-sm font-black text-white leading-snug mb-1 group-hover:text-primary/90 transition-colors">
+            Follow Bea Voss<br />on the F1 grid
+          </h3>
+          <p className="text-white/50 text-[11px] mb-3">Visual novel · New episodes weekly</p>
+          <div className="flex items-center justify-between">
+            <span className="font-racing text-[10px] text-white/40">Chapter 1 available now</span>
+            <div className="flex items-center gap-1 font-racing text-[10px] font-bold text-primary bg-primary/20 rounded-full px-3 py-1">
+              Play Story <ChevronRight className="w-3 h-3" />
             </div>
-            <Link href="/novel">
-              <button className="flex items-center gap-2 bg-white/15 backdrop-blur-sm hover:bg-white/25 border border-white/30 text-white font-racing text-xs font-bold px-4 py-2.5 rounded-lg transition-all">
-                Play Story
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </Link>
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -360,6 +368,7 @@ export default function Dashboard() {
             drivers={driverStandings || []}
             constructors={constructorStandings || []}
           />
+          <BeaStoryCard />
         </div>
       </div>
     </div>
