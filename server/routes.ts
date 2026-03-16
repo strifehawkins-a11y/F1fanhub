@@ -336,6 +336,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/auth/logout", (req: any, res) => {
+    req.logout(() => res.json({ success: true }));
+  });
+
   // ---- ADMIN ----
   app.post("/api/admin/set-role", isAuthenticated, async (req: any, res) => {
     try {
