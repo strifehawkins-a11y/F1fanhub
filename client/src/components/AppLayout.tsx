@@ -38,7 +38,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleLogout = async () => {
     setMobileMenuOpen(false);
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     queryClient.clear();
     window.location.href = "/";
   };
