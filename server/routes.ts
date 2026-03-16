@@ -95,6 +95,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ---- FORUM ----
+  app.get("/api/forum/posts", async (_req, res) => {
+    try {
+      const posts = await storage.getAllForumPosts();
+      res.json(posts);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch forum posts" });
+    }
+  });
+
   app.get("/api/forum/race/:raceId", async (req, res) => {
     try {
       const posts = await storage.getForumPostsByRace(Number(req.params.raceId));

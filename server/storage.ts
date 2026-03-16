@@ -34,6 +34,7 @@ export interface IStorage {
   getLeaderboard(): Promise<Array<{ userId: string; username: string | null; profileImageUrl: string | null; lifetimePoints: number; attempts: number }>>;
 
   // Forum
+  getAllForumPosts(): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
   getForumPostsByRace(raceId: number): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
   getForumPostById(id: number): Promise<ForumPost | undefined>;
   createForumPost(post: InsertForumPost): Promise<ForumPost>;
@@ -204,6 +205,44 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: r.profileImageUrl,
       lifetimePoints: r.lifetimePoints,
       attempts: attemptMap.get(r.userId) || 0,
+    }));
+  }
+
+  async getAllForumPosts() {
+    const posts = await db
+      .select({
+        id: forumPosts.id,
+        raceId: forumPosts.raceId,
+        userId: forumPosts.userId,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        createdAt: forumPosts.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(forumPosts)
+      .leftJoin(users, eq(forumPosts.userId, users.id))
+      .orderBy(desc(forumPosts.createdAt))
+      .limit(20);
+
+    const commentCounts = await db
+      .select({ postId: forumComments.postId, count: sql<number>`count(*)` })
+      .from(forumComments)
+      .groupBy(forumComments.postId);
+
+    const countMap = new Map(commentCounts.map((c) => [c.postId, Number(c.count)]));
+
+    return posts.map((p) => ({
+      id: p.id,
+      raceId: p.raceId,
+      userId: p.userId,
+      title: p.title,
+      content: p.content,
+      createdAt: p.createdAt,
+      username: p.firstName ? `${p.firstName} ${p.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: p.profileImageUrl,
+      commentCount: countMap.get(p.id) || 0,
     }));
   }
 

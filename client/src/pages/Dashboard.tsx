@@ -207,10 +207,11 @@ function MiniStandings({ drivers, constructors }: { drivers: DriverStanding[]; c
 }
 
 function HeroArticle({ article }: { article: any }) {
-  const category = getCategoryFromTags(article.tags);
+  const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
+  const href = article.isForum ? `/forum` : `/articles/${article.id}`;
   return (
-    <Link href={`/articles/${article.id}`}>
+    <Link href={href}>
       <div
         data-testid={`hero-article-${article.id}`}
         className="relative rounded-2xl overflow-hidden cursor-pointer group min-h-[300px] md:min-h-[360px] flex flex-col justify-end"
@@ -243,10 +244,11 @@ function HeroArticle({ article }: { article: any }) {
 }
 
 function ArticleCard({ article }: { article: any }) {
-  const category = getCategoryFromTags(article.tags);
+  const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
+  const href = article.isForum ? `/forum` : `/articles/${article.id}`;
   return (
-    <Link href={`/articles/${article.id}`}>
+    <Link href={href}>
       <div
         data-testid={`card-article-${article.id}`}
         className="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-md transition-all group h-full flex flex-col"
@@ -281,6 +283,7 @@ export default function Dashboard() {
     queryFn: () => fetch(`/api/races?season=2026`).then(r => r.json()),
   });
   const { data: articles, isLoading: articlesLoading } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const { data: forumPosts } = useQuery<any[]>({ queryKey: ["/api/forum/posts"] });
   const { data: driverStandings } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
   const { data: constructorStandings } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
 
@@ -293,8 +296,27 @@ export default function Dashboard() {
     onError: () => toast({ title: "Already Claimed", description: "You've already claimed your daily points.", variant: "destructive" }),
   });
 
-  const heroArticle = articles?.[0];
-  const gridArticles = articles?.slice(1) || [];
+  const normalizedForum = (forumPosts || []).map((p: any) => ({
+    id: `forum-${p.id}`,
+    forumId: p.id,
+    title: p.title,
+    content: p.content,
+    excerpt: p.content?.slice(0, 200) || "",
+    imageUrl: null,
+    tags: ["Forum"],
+    publishedAt: p.createdAt,
+    username: p.username,
+    commentCount: p.commentCount,
+    isForum: true,
+  }));
+
+  const allItems = [
+    ...(articles || []),
+    ...normalizedForum,
+  ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+  const heroArticle = allItems[0];
+  const gridArticles = allItems.slice(1) || [];
 
   return (
     <div className="space-y-0">

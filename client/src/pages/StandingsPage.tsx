@@ -59,8 +59,9 @@ export default function StandingsPage() {
       {/* Table */}
       {tab === "drivers" ? (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
           {/* Table header */}
-          <div className="grid grid-cols-[40px_1fr_140px_60px_50px_50px] gap-2 px-4 py-2.5 border-b border-border bg-background/40">
+          <div className="grid grid-cols-[40px_minmax(130px,1fr)_minmax(120px,160px)_60px_50px_50px] gap-2 px-4 py-2.5 border-b border-border bg-background/40 min-w-[480px]">
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase">#</span>
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase">Driver</span>
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase">Team</span>
@@ -81,7 +82,7 @@ export default function StandingsPage() {
                   <div
                     key={d.id}
                     data-testid={`row-driver-${d.id}`}
-                    className={`grid grid-cols-[40px_1fr_140px_60px_50px_50px] gap-2 items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors ${
+                    className={`grid grid-cols-[40px_minmax(130px,1fr)_minmax(120px,160px)_60px_50px_50px] gap-2 items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors min-w-[480px] ${
                       d.position <= 3 ? "bg-white/[0.015]" : ""
                     }`}
                   >
@@ -150,11 +151,13 @@ export default function StandingsPage() {
               })}
             </div>
           )}
+          </div>
         </div>
       ) : (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
           {/* Table header */}
-          <div className="grid grid-cols-[40px_1fr_80px_60px] gap-2 px-4 py-2.5 border-b border-border bg-background/40">
+          <div className="grid grid-cols-[40px_1fr_80px_60px] gap-2 px-4 py-2.5 border-b border-border bg-background/40 min-w-[360px]">
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase">#</span>
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase">Constructor</span>
             <span className="font-racing text-[10px] text-muted-foreground tracking-widest uppercase text-center">Wins</span>
@@ -174,7 +177,7 @@ export default function StandingsPage() {
                   <div
                     key={c.id}
                     data-testid={`row-constructor-${c.id}`}
-                    className={`grid grid-cols-[40px_1fr_80px_60px] gap-2 items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors ${
+                    className={`grid grid-cols-[40px_1fr_80px_60px] gap-2 items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors min-w-[360px] ${
                       c.position <= 3 ? "bg-white/[0.015]" : ""
                     }`}
                   >
@@ -232,6 +235,7 @@ export default function StandingsPage() {
               })}
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
