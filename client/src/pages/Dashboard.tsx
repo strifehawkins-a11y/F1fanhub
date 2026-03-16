@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
-import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Play } from "lucide-react";
+import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Play, Edit2, X, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
@@ -90,7 +90,15 @@ function BeaStoryCard() {
   );
 }
 
-function NextRaceWidget({ races }: { races: Race[] }) {
+const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all";
+const labelCls = "font-racing text-[9px] text-gray-400 tracking-widest uppercase block mb-1";
+
+function NextRaceWidget({ races, profile }: { races: Race[]; profile?: UserProfile }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Partial<Race>>({});
+
   const upcoming = races?.filter(r => r.status !== "completed").sort((a, b) =>
     new Date(a.raceDate).getTime() - new Date(b.raceDate).getTime()
   );
@@ -103,6 +111,31 @@ function NextRaceWidget({ races }: { races: Race[] }) {
   const days = differenceInDays(date, now);
   const hours = differenceInHours(date, now) % 24;
 
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<Race>) => apiRequest("PATCH", `/api/races/${next.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/races"] });
+      setEditing(false);
+      toast({ title: "Next race updated!" });
+    },
+    onError: () => toast({ title: "Failed to update race", variant: "destructive" }),
+  });
+
+  const startEdit = () => {
+    setForm({
+      name: next.name,
+      circuit: next.circuit,
+      location: next.location,
+      country: next.country,
+      flagEmoji: next.flagEmoji,
+      raceDate: next.raceDate,
+      qualifyingDate: next.qualifyingDate,
+      hasSprint: next.hasSprint,
+      status: next.status,
+    });
+    setEditing(true);
+  };
+
   return (
     <div className="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
@@ -111,35 +144,110 @@ function NextRaceWidget({ races }: { races: Race[] }) {
           {next.status === "live" ? "Live Race" : "Next Race"}
         </span>
         {next.status === "live" && (
-          <span className="ml-auto flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             <span className="font-racing text-[9px] text-green-600 tracking-widest">LIVE</span>
           </span>
         )}
+        {profile?.isAdmin && !editing && (
+          <button
+            data-testid="button-edit-next-race"
+            onClick={startEdit}
+            className="ml-auto p-1 rounded text-gray-300 hover:text-primary hover:bg-primary/5 transition-all"
+            title="Edit next race"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {editing && (
+          <button onClick={() => setEditing(false)} className="ml-auto p-1 rounded text-gray-300 hover:text-gray-700 transition-all">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          <span className="text-3xl">{next.flagEmoji}</span>
-          <div>
-            <p className="font-racing text-sm font-black text-gray-900 leading-tight">{next.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{next.circuit}</p>
-            <p className="text-xs text-gray-400">{format(date, "d MMM yyyy")}</p>
+
+      {editing ? (
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="col-span-2">
+              <label className={labelCls}>Race Name</label>
+              <input value={form.name ?? ""} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="e.g. Australian Grand Prix" />
+            </div>
+            <div className="col-span-2">
+              <label className={labelCls}>Circuit</label>
+              <input value={form.circuit ?? ""} onChange={e => setForm({ ...form, circuit: e.target.value })} className={inputCls} placeholder="e.g. Albert Park Circuit" />
+            </div>
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location ?? ""} onChange={e => setForm({ ...form, location: e.target.value })} className={inputCls} placeholder="Melbourne" />
+            </div>
+            <div>
+              <label className={labelCls}>Flag Emoji</label>
+              <input value={form.flagEmoji ?? ""} onChange={e => setForm({ ...form, flagEmoji: e.target.value })} className={inputCls} placeholder="🇦🇺" />
+            </div>
+            <div>
+              <label className={labelCls}>Race Date</label>
+              <input type="date" value={form.raceDate?.slice(0, 10) ?? ""} onChange={e => setForm({ ...form, raceDate: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Qualifying Date</label>
+              <input type="date" value={form.qualifyingDate?.slice(0, 10) ?? ""} onChange={e => setForm({ ...form, qualifyingDate: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Status</label>
+              <select value={form.status ?? "upcoming"} onChange={e => setForm({ ...form, status: e.target.value })} className={inputCls}>
+                <option value="upcoming">Upcoming</option>
+                <option value="live">Live</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.hasSprint ?? false} onChange={e => setForm({ ...form, hasSprint: e.target.checked })} className="w-3.5 h-3.5 accent-primary" />
+                <span className="font-racing text-[9px] text-gray-500 tracking-widest uppercase">Sprint Weekend</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              data-testid="button-save-next-race"
+              onClick={() => updateMutation.mutate(form)}
+              disabled={updateMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-racing text-xs font-bold rounded-lg hover:bg-red-700 transition-all disabled:opacity-50"
+            >
+              <Save className="w-3 h-3" />
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </button>
+            <button onClick={() => setEditing(false)} className="px-4 py-2 border border-gray-200 font-racing text-xs text-gray-400 rounded-lg hover:text-gray-700">
+              Cancel
+            </button>
           </div>
         </div>
-        {next.status !== "live" && days >= 0 && (
-          <div className="mt-3 flex items-center gap-1.5 bg-primary/5 rounded-lg px-2.5 py-2">
-            <Timer className="w-3 h-3 text-primary" />
-            <span className="font-racing text-xs text-primary font-black">
-              {days > 0 ? `${days}d ${hours}h` : `${hours}h`} to go
-            </span>
+      ) : (
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">{next.flagEmoji}</span>
+            <div>
+              <p className="font-racing text-sm font-black text-gray-900 leading-tight">{next.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{next.circuit}</p>
+              <p className="text-xs text-gray-400">{format(date, "d MMM yyyy")}</p>
+            </div>
           </div>
-        )}
-        {next.hasSprint && (
-          <div className="mt-2">
-            <span className="font-racing text-[9px] bg-orange-100 text-orange-600 rounded-full px-2 py-0.5 border border-orange-200">Sprint Weekend</span>
-          </div>
-        )}
-      </div>
+          {next.status !== "live" && days >= 0 && (
+            <div className="mt-3 flex items-center gap-1.5 bg-primary/5 rounded-lg px-2.5 py-2">
+              <Timer className="w-3 h-3 text-primary" />
+              <span className="font-racing text-xs text-primary font-black">
+                {days > 0 ? `${days}d ${hours}h` : `${hours}h`} to go
+              </span>
+            </div>
+          )}
+          {next.hasSprint && (
+            <div className="mt-2">
+              <span className="font-racing text-[9px] bg-orange-100 text-orange-600 rounded-full px-2 py-0.5 border border-orange-200">Sprint Weekend</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -376,7 +484,7 @@ export default function Dashboard() {
 
         {/* Right: sidebar */}
         <div className="space-y-4">
-          {races && <NextRaceWidget races={races} />}
+          {races && <NextRaceWidget races={races} profile={profile} />}
           <MiniStandings
             drivers={driverStandings || []}
             constructors={constructorStandings || []}
