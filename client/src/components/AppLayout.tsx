@@ -16,7 +16,7 @@ const navItems = [
   { path: "/articles", label: "Articles", icon: BookOpen },
   { path: "/forum", label: "Forum", icon: MessageSquare },
   { path: "/quiz", label: "Quiz", icon: Brain },
-  { path: "/novel", label: "Bea", icon: Heart },
+  { path: "/novel", label: "Gina", icon: Heart },
   { path: "/leaderboard", label: "Rankings", icon: Trophy },
 ];
 
@@ -225,7 +225,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {!user && (
         <div className="bg-primary text-white px-4 py-2 flex items-center justify-between gap-3 text-center">
           <p className="font-racing text-xs tracking-wide flex-1">
-            🏎️ Join F1 Paddock — earn points, unlock Bea's story, compete in quizzes &amp; climb the leaderboard
+            🏎️ Join F1 Paddock — earn points, unlock Gina's story, compete in quizzes &amp; climb the leaderboard
           </p>
           <Link href="/login">
             <button

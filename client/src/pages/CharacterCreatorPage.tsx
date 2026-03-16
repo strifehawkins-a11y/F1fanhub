@@ -394,7 +394,7 @@ export default function CharacterCreatorPage() {
   const points = profile?.totalPoints ?? 0;
 
   return (
-    <AuthGate feature="Bea Voss Studio" description="Sign in to access the character creator and customise Bea's look.">
+    <AuthGate feature="Gina Voss Studio" description="Sign in to access the character creator and customise Gina's look.">
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col" style={{ fontFamily: "'Oxanium', sans-serif" }}>
 
       {/* ── Top bar ── */}
@@ -407,7 +407,7 @@ export default function CharacterCreatorPage() {
           <ArrowLeft className="w-4 h-4" /> Back to Story
         </button>
         <h1 className="font-racing font-bold tracking-widest text-sm text-primary uppercase">
-          Bea Voss Studio
+          Gina Voss Studio
         </h1>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-3 py-1">

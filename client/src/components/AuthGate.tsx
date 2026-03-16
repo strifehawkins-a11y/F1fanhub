@@ -32,7 +32,7 @@ export default function AuthGate({ children, feature = "this feature", descripti
           {description || `Create a free account to access ${feature}.`}
         </p>
         <p className="text-gray-400 text-xs mb-8 max-w-xs">
-          Earn points, climb the leaderboard, and unlock Bea's full story.
+          Earn points, climb the leaderboard, and unlock Gina's full story.
         </p>
 
         <div className="flex gap-3 mb-8">
@@ -57,7 +57,7 @@ export default function AuthGate({ children, feature = "this feature", descripti
         <div className="grid grid-cols-3 gap-3 max-w-xs w-full">
           {[
             { icon: Zap, label: "Earn Points", desc: "Daily rewards & quizzes" },
-            { icon: Heart, label: "Bea's Story", desc: "Visual novel + dress-up" },
+            { icon: Heart, label: "Gina's Story", desc: "Visual novel + dress-up" },
             { icon: Trophy, label: "Leaderboard", desc: "Compete with fans" },
           ].map(({ icon: Icon, label, desc }) => (
             <div key={label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 border border-gray-100">

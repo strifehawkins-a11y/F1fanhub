@@ -129,7 +129,7 @@ function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string 
       <img
         key={portraitSrc}
         src={portraitSrc}
-        alt="Bea Voss"
+        alt="Gina Voss"
         className="relative z-10 h-full w-full object-cover object-top rounded-2xl"
         style={{
           boxShadow: emotionGlow[emotion] || emotionGlow.default,
@@ -363,7 +363,7 @@ export default function NovelPage() {
     mutationFn: () => apiRequest("DELETE", "/api/novel/progress"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/novel/progress"] });
-      toast({ title: "Story Reset", description: "Bea's story has been restarted from the beginning." });
+      toast({ title: "Story Reset", description: "Gina's story has been restarted from the beginning." });
     },
     onError: () => {
       toast({ title: "Reset Failed", description: "Could not reset story progress.", variant: "destructive" });
@@ -464,7 +464,7 @@ export default function NovelPage() {
   }
 
   return (
-    <AuthGate feature="Bea's Story" description="Sign in to read Bea Voss's visual novel, customise her outfits and unlock exclusive chapters.">
+    <AuthGate feature="Gina's Story" description="Sign in to read Gina Voss's visual novel, customise her outfits and unlock exclusive chapters.">
     <div className="relative">
       {/* Dark scene background */}
       <div
@@ -475,7 +475,7 @@ export default function NovelPage() {
           {/* Tab header */}
           <div className="sticky top-0 z-10 px-4 pt-4 pb-2" style={{ background: "hsl(0 40% 6%)" }}>
             <div className="flex items-center justify-between mb-3">
-              <h1 className="font-racing text-xl font-black text-white">Bea's Story</h1>
+              <h1 className="font-racing text-xl font-black text-white">Gina's Story</h1>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Heart className="w-4 h-4 text-pink-500" />
@@ -490,7 +490,7 @@ export default function NovelPage() {
                 <button
                   data-testid="button-reset-story"
                   onClick={() => {
-                    if (confirm("Reset Bea's story to the beginning? Your affection level and choices will be lost.")) {
+                    if (confirm("Reset Gina's story to the beginning? Your affection level and choices will be lost.")) {
                       resetMutation.mutate();
                     }
                   }}
@@ -565,7 +565,7 @@ export default function NovelPage() {
                   <>
                     <Star className="w-8 h-8 text-yellow-400 mx-auto" />
                     <p className="font-racing text-base font-black text-white">Story Complete!</p>
-                    <p className="text-white/60 text-sm">You've reached the end of Bea's story. More chapters coming soon.</p>
+                    <p className="text-white/60 text-sm">You've reached the end of Gina's story. More chapters coming soon.</p>
                   </>
                 ) : (
                   <>
@@ -577,7 +577,7 @@ export default function NovelPage() {
                 <button
                   data-testid="button-reset-story-inline"
                   onClick={() => {
-                    if (confirm("Reset Bea's story to the beginning? Your progress will be lost.")) {
+                    if (confirm("Reset Gina's story to the beginning? Your progress will be lost.")) {
                       resetMutation.mutate();
                     }
                   }}

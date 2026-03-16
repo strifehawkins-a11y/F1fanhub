@@ -188,7 +188,7 @@ function HeroContent({
               </h1>
 
               <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
-                Race stats, live forums, quizzes, leaderboards, and Bea's visual novel — all in one place for the real F1 fan.
+                Race stats, live forums, quizzes, leaderboards, and Gina's visual novel — all in one place for the real F1 fan.
               </p>
 
               <div className="flex flex-wrap gap-3">
@@ -243,7 +243,7 @@ function HeroContent({
       {/* ── Red ticker band ── */}
       <div className="bg-primary py-3.5 overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-wrap items-center gap-x-8 gap-y-1">
-          {["Live Standings", "Race Forum", "F1 Quiz", "Bea's Story", "Daily 5,000 Points Reward", "2026 Calendar"].map((item) => (
+          {["Live Standings", "Race Forum", "F1 Quiz", "Gina's Story", "Daily 5,000 Points Reward", "2026 Calendar"].map((item) => (
             <span key={item} className="font-racing text-white text-[11px] tracking-[0.22em] uppercase font-bold whitespace-nowrap">{item}</span>
           ))}
         </div>
@@ -265,7 +265,7 @@ function HeroContent({
               { icon: BrainIcon, label: "F1 Quiz", desc: "Test your knowledge across 500+ questions and climb the leaderboard." },
               { icon: Trophy, label: "Leaderboard", desc: "Earn points, compete with global fans, and claim the top spot." },
               { icon: BookOpen, label: "News & Analysis", desc: "Race reports, driver interviews, technical analysis — all editorial." },
-              { icon: Heart, label: "Bea's Visual Novel", desc: "Follow Bea Voss — rookie driver, big dreams — through her first F1 season." },
+              { icon: Heart, label: "Gina's Visual Novel", desc: "Follow Gina Voss — rookie driver, big dreams — through her first F1 season." },
             ].map(({ icon: Icon, label, desc }) => (
               <button
                 key={label}
@@ -294,7 +294,7 @@ function HeroContent({
             Start your season
           </h2>
           <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-            Join thousands of F1 fans already earning points, debating races, and following Bea's story.
+            Join thousands of F1 fans already earning points, debating races, and following Gina's story.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button

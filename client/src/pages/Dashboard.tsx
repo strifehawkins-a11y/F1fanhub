@@ -72,10 +72,10 @@ function BeaStoryCard() {
         <div className="p-4">
           <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-2.5 py-1 mb-3">
             <Play className="w-2.5 h-2.5 text-white fill-white" />
-            <span className="font-racing text-[9px] text-white/90 tracking-widest uppercase font-bold">Bea's Season · 2026</span>
+            <span className="font-racing text-[9px] text-white/90 tracking-widest uppercase font-bold">Gina's Season · 2026</span>
           </div>
           <h3 className="font-racing text-sm font-black text-white leading-snug mb-1 group-hover:text-primary/90 transition-colors">
-            Follow Bea Voss<br />on the F1 grid
+            Follow Gina Voss<br />on the F1 grid
           </h3>
           <p className="text-white/50 text-[11px] mb-3">Visual novel · New episodes weekly</p>
           <div className="flex items-center justify-between">
