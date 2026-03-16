@@ -16,7 +16,6 @@ import CharacterCreatorPage from "@/pages/CharacterCreatorPage";
 import AdminPage from "@/pages/AdminPage";
 import StandingsPage from "@/pages/StandingsPage";
 import NotFound from "@/pages/not-found";
-import { useAuth } from "@/hooks/use-auth";
 import AppLayout from "@/components/AppLayout";
 
 function AuthenticatedApp() {
@@ -41,19 +40,7 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  const { isLoading } = useAuth();
   const [location] = useLocation();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="font-racing text-primary text-xs tracking-widest uppercase">Loading</p>
-        </div>
-      </div>
-    );
-  }
 
   if (location === "/login") return <LoginPage />;
 
