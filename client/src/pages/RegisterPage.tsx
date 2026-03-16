@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { Eye, EyeOff } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 
 export default function RegisterPage() {
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,8 +25,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.message || "Registration failed");
       } else {
-        await queryClient.invalidateQueries();
-        setLocation("/");
+        window.location.href = "/";
       }
     } catch {
       setError("Connection error. Please try again.");
