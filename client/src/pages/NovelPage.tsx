@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check, Wand2 } from "lucide-react";
+import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check, Wand2, RotateCcw, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -358,6 +358,17 @@ export default function NovelPage() {
     },
   });
 
+  const resetMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/novel/progress"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/progress"] });
+      toast({ title: "Story Reset", description: "Bea's story has been restarted from the beginning." });
+    },
+    onError: () => {
+      toast({ title: "Reset Failed", description: "Could not reset story progress.", variant: "destructive" });
+    },
+  });
+
   const currentChapterId = progress?.currentChapter || 1;
   const currentSceneId = progress?.currentScene || 0;
   const completedChoices: string[] = progress?.completedChoices || [];
@@ -456,15 +467,30 @@ export default function NovelPage() {
           <div className="sticky top-0 z-10 px-4 pt-4 pb-2" style={{ background: "hsl(0 40% 6%)" }}>
             <div className="flex items-center justify-between mb-3">
               <h1 className="font-racing text-xl font-black text-white">Bea's Story</h1>
-              <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-pink-500" />
-                <div className="w-24 h-2 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-pink-600 to-pink-400 transition-all duration-500"
-                    style={{ width: `${affectionPct}%` }}
-                  />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-pink-500" />
+                  <div className="w-24 h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-pink-600 to-pink-400 transition-all duration-500"
+                      style={{ width: `${affectionPct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-racing text-pink-400 font-bold">{affectionLevel}</span>
                 </div>
-                <span className="text-xs font-racing text-pink-400 font-bold">{affectionLevel}</span>
+                <button
+                  data-testid="button-reset-story"
+                  onClick={() => {
+                    if (confirm("Reset Bea's story to the beginning? Your affection level and choices will be lost.")) {
+                      resetMutation.mutate();
+                    }
+                  }}
+                  disabled={resetMutation.isPending}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
+                  title="Reset Story"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
               </div>
             </div>
 
@@ -512,12 +538,46 @@ export default function NovelPage() {
             </div>
 
             {/* Chapter title */}
-            {chapter && (
+            {chapter && scene && (
               <div className="text-center mb-3">
                 <p className="font-racing text-[10px] text-primary/60 tracking-widest uppercase">
                   Chapter {chapter.id}
                 </p>
                 <p className="font-racing text-sm font-black text-white/80">{chapter.title}</p>
+              </div>
+            )}
+
+            {/* Story complete / corrupted progress recovery */}
+            {!scene && (
+              <div className="rounded-xl border border-white/10 p-6 mb-4 text-center space-y-4"
+                style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}
+              >
+                {currentChapterId > 5 || (chapter && currentSceneId >= (chapter.scenes?.length || 0)) ? (
+                  <>
+                    <Star className="w-8 h-8 text-yellow-400 mx-auto" />
+                    <p className="font-racing text-base font-black text-white">Story Complete!</p>
+                    <p className="text-white/60 text-sm">You've reached the end of Bea's story. More chapters coming soon.</p>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-8 h-8 text-orange-400 mx-auto" />
+                    <p className="font-racing text-base font-black text-white">Story Unavailable</p>
+                    <p className="text-white/60 text-sm">There was a problem loading this scene. Reset the story to start fresh.</p>
+                  </>
+                )}
+                <button
+                  data-testid="button-reset-story-inline"
+                  onClick={() => {
+                    if (confirm("Reset Bea's story to the beginning? Your progress will be lost.")) {
+                      resetMutation.mutate();
+                    }
+                  }}
+                  disabled={resetMutation.isPending}
+                  className="mx-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-racing text-sm font-bold hover:bg-primary/80 transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  {resetMutation.isPending ? "Resetting..." : "Restart Story"}
+                </button>
               </div>
             )}
 
@@ -620,6 +680,18 @@ export default function NovelPage() {
                     </button>
                   );
                 })}
+
+                {/* Continue button when all choices already made (returning visit) */}
+                {scene.choices.every(c => completedChoices.includes(c.id)) && (
+                  <button
+                    data-testid="button-continue-after-choices"
+                    onClick={handleContinueAfterChoice}
+                    disabled={progressMutation.isPending}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-racing text-xs font-bold tracking-widest uppercase transition-all"
+                  >
+                    Continue Story <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             )}
           </TabsContent>

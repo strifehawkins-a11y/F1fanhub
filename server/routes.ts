@@ -319,6 +319,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/novel/progress", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.upsertNovelProgress(userId, {
+        currentChapter: 1,
+        currentScene: 0,
+        completedChoices: [],
+        pointsSpent: 0,
+        selectedOutfit: ["suit_default", "casual_default", "helmet_default", "hair_default", "acc_default"],
+        affectionLevel: 0,
+      });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to reset story" });
+    }
+  });
+
   // ---- ADMIN ----
   app.post("/api/admin/set-role", isAuthenticated, async (req: any, res) => {
     try {
