@@ -1,6 +1,8 @@
 import { db } from "./db";
-import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings, localCredentials } from "@shared/schema";
+import { sql, eq } from "drizzle-orm";
+import bcrypt from "bcrypt";
+import { authStorage } from "./replit_integrations/auth/storage";
 
 export async function seedDatabase() {
   console.log("Seeding database...");
@@ -165,6 +167,36 @@ export async function seedDatabase() {
       { position: 10, teamName: "Kick Sauber", teamColor: "#52E252", points: 0, wins: 0, season: 2026 },
     ]);
     console.log("2026 constructor standings seeded.");
+  }
+
+  // Seed admin account
+  const adminEmail = "strifehawkins@gmail.com";
+  const adminPassword = "Lansanah1!";
+  const adminUserId = "local_5ea2369b-25f8-4e1d-bac8-3692e6bd5c56";
+
+  const [existingAdmin] = await db.select().from(localCredentials).where(eq(localCredentials.email, adminEmail));
+  if (!existingAdmin) {
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    await db.insert(localCredentials).values({
+      userId: adminUserId,
+      email: adminEmail,
+      passwordHash,
+      displayName: "Lansanah",
+    });
+    await authStorage.upsertUser({
+      id: adminUserId,
+      email: adminEmail,
+      firstName: "Lansanah",
+      lastName: "",
+      profileImageUrl: "",
+    });
+    await db.insert(userProfile).values({
+      userId: adminUserId,
+      totalPoints: 0,
+      lifetimePoints: 0,
+      isAdmin: true,
+    }).onConflictDoNothing();
+    console.log("Admin account seeded.");
   }
 
   console.log("Database seeding complete.");
