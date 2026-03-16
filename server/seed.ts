@@ -169,7 +169,7 @@ export async function seedDatabase() {
     console.log("2026 constructor standings seeded.");
   }
 
-  // Seed admin account
+  // Seed admin account — always ensure credentials + admin flag exist
   const adminEmail = "strifehawkins@gmail.com";
   const adminPassword = "Lansanah1!";
   const adminUserId = "local_5ea2369b-25f8-4e1d-bac8-3692e6bd5c56";
@@ -190,14 +190,16 @@ export async function seedDatabase() {
       lastName: "",
       profileImageUrl: "",
     });
-    await db.insert(userProfile).values({
-      userId: adminUserId,
-      totalPoints: 0,
-      lifetimePoints: 0,
-      isAdmin: true,
-    }).onConflictDoNothing();
-    console.log("Admin account seeded.");
+    console.log("Admin credentials seeded.");
   }
+
+  // Always guarantee is_admin = true for the admin user
+  await db.insert(userProfile).values({
+    userId: adminUserId,
+    totalPoints: 0,
+    lifetimePoints: 0,
+    isAdmin: true,
+  }).onConflictDoUpdate({ target: userProfile.userId, set: { isAdmin: true } });
 
   console.log("Database seeding complete.");
 }
