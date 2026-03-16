@@ -338,6 +338,7 @@ export default function NovelPage() {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [choiceResponse, setChoiceResponse] = useState<string | null>(null);
+  const [showChapterEnd, setShowChapterEnd] = useState(false);
 
   const { data: progress, isLoading } = useQuery<any>({
     queryKey: ["/api/novel/progress"],
@@ -387,6 +388,7 @@ export default function NovelPage() {
   useEffect(() => {
     if (!scene) return;
     setChoiceResponse(null);
+    setShowChapterEnd(false);
     setIsTyping(true);
     setDisplayedText("");
     let i = 0;
@@ -403,6 +405,10 @@ export default function NovelPage() {
     return () => clearInterval(timer);
   }, [scene?.id, scene?.text, currentChapterId, currentSceneId]);
 
+  const isLastScene = currentSceneId >= (chapter?.scenes.length || 1) - 1;
+  const isLastChapter = currentChapterId >= NOVEL_CHAPTERS.length;
+  const nextChapter = NOVEL_CHAPTERS.find(c => c.id === currentChapterId + 1);
+
   const handleAdvance = () => {
     if (isTyping) {
       setIsTyping(false);
@@ -410,15 +416,19 @@ export default function NovelPage() {
       return;
     }
     if (!scene?.choices) {
-      const isLastScene = currentSceneId >= (chapter?.scenes.length || 1) - 1;
-      const isLastChapter = currentChapterId >= NOVEL_CHAPTERS.length;
-
       if (isLastScene && !isLastChapter) {
-        progressMutation.mutate({ advanceChapter: true });
+        setShowChapterEnd(true);
       } else if (!isLastScene) {
         progressMutation.mutate({ advanceScene: true });
+      } else if (isLastScene && isLastChapter) {
+        setShowChapterEnd(true);
       }
     }
+  };
+
+  const handleAdvanceChapter = () => {
+    setShowChapterEnd(false);
+    progressMutation.mutate({ advanceChapter: true });
   };
 
   const handleChoice = (choice: any) => {
@@ -433,13 +443,12 @@ export default function NovelPage() {
 
   const handleContinueAfterChoice = () => {
     setChoiceResponse(null);
-    const isLastScene = currentSceneId >= (chapter?.scenes.length || 1) - 1;
-    const isLastChapter = currentChapterId >= NOVEL_CHAPTERS.length;
-
     if (isLastScene && !isLastChapter) {
-      progressMutation.mutate({ advanceChapter: true });
+      setShowChapterEnd(true);
     } else if (!isLastScene) {
       progressMutation.mutate({ advanceScene: true });
+    } else if (isLastScene && isLastChapter) {
+      setShowChapterEnd(true);
     }
   };
 
@@ -581,8 +590,63 @@ export default function NovelPage() {
               </div>
             )}
 
+            {/* Chapter end screen */}
+            {showChapterEnd && scene && (
+              <div
+                className="rounded-2xl border border-primary/30 p-6 mb-4 text-center space-y-5"
+                style={{ background: "linear-gradient(135deg, rgba(100,0,20,0.7) 0%, rgba(40,0,10,0.9) 100%)", backdropFilter: "blur(12px)" }}
+              >
+                {/* Completion badge */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-14 h-14 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+                    <Star className="w-7 h-7 text-yellow-400" />
+                  </div>
+                  <span className="font-racing text-[10px] text-primary tracking-[0.3em] uppercase font-bold">Chapter Complete</span>
+                </div>
+
+                {/* Completed chapter info */}
+                <div>
+                  <p className="font-racing text-xl font-black text-white leading-tight">{chapter?.title}</p>
+                  <p className="text-white/50 text-sm mt-1">{chapter?.subtitle}</p>
+                </div>
+
+                <div className="h-px bg-white/10 w-full" />
+
+                {/* Next chapter preview or story end */}
+                {!isLastChapter && nextChapter ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-racing text-[10px] text-white/40 tracking-widest uppercase mb-2">Up Next</p>
+                      <p className="font-racing text-base font-black text-white">{nextChapter.title}</p>
+                      <p className="text-white/50 text-xs mt-1">{nextChapter.subtitle}</p>
+                    </div>
+                    <button
+                      data-testid="button-next-chapter"
+                      onClick={handleAdvanceChapter}
+                      disabled={progressMutation.isPending}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary hover:bg-primary/80 text-white font-racing text-sm font-bold tracking-widest uppercase transition-all shadow-lg shadow-primary/20"
+                    >
+                      {progressMutation.isPending ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>Continue to Chapter {nextChapter.id} <ChevronRight className="w-4 h-4" /></>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-white/60 text-sm">You've read the entire story so far. More chapters are coming soon — check back later!</p>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Heart className="w-4 h-4 text-pink-400" />
+                      <span className="font-racing text-sm text-pink-400 font-bold">Final Affection: {affectionLevel}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Dialogue box */}
-            {scene && (
+            {scene && !showChapterEnd && (
               <div
                 className="rounded-lg border border-white/10 p-4 mb-4 relative cursor-pointer"
                 style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
@@ -629,7 +693,7 @@ export default function NovelPage() {
             )}
 
             {/* Choices */}
-            {scene?.choices && !choiceResponse && !isTyping && (
+            {scene?.choices && !choiceResponse && !isTyping && !showChapterEnd && (
               <div className="space-y-2">
                 <p className="font-racing text-[10px] text-white/40 tracking-widest uppercase mb-2">Choose your response:</p>
                 {scene.choices.map((choice) => {
