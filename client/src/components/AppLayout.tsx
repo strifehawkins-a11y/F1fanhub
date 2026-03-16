@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, User } from "lucide-react";
+import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
@@ -25,8 +25,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/profile"],
@@ -38,19 +36,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const isActive = (path: string) => path === "/" ? location === "/" : location.startsWith(path);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleLogout = async () => {
-    setUserMenuOpen(false);
     setMobileMenuOpen(false);
     await fetch("/api/auth/logout", { method: "POST" });
     queryClient.clear();
@@ -121,54 +107,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
                     </div>
                   )}
-                  {/* Avatar with dropdown */}
-                  <div ref={userMenuRef} className="relative">
-                    <button
-                      data-testid="button-user-menu"
-                      onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="focus:outline-none"
+                  {/* Avatar */}
+                  <Link href="/leaderboard">
+                    <Avatar
+                      className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
+                      data-testid="link-profile"
                     >
-                      <Avatar
-                        className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
-                        data-testid="link-profile"
-                      >
-                        <AvatarImage src={(user as any)?.profileImageUrl || ""} />
-                        <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </button>
+                      <AvatarImage src={(user as any)?.profileImageUrl || ""} />
+                      <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
 
-                    {/* Dropdown */}
-                    {userMenuOpen && (
-                      <div className="absolute right-0 top-10 w-48 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/60 z-50 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-50">
-                          <p className="font-racing text-xs font-black text-gray-900 truncate">{displayName}</p>
-                          {profile && (
-                            <p className="font-racing text-[10px] text-primary mt-0.5">{profile.totalPoints.toLocaleString()} pts</p>
-                          )}
-                        </div>
-                        <Link href="/leaderboard">
-                          <button
-                            data-testid="menu-item-profile"
-                            onClick={() => setUserMenuOpen(false)}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left font-racing text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            <User className="w-3.5 h-3.5 text-gray-400" />
-                            Profile & Rankings
-                          </button>
-                        </Link>
-                        <button
-                          data-testid="button-logout"
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left font-racing text-xs text-red-600 hover:bg-red-50 transition-colors border-t border-gray-50"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          Sign Out
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Sign Out button — desktop */}
+                  <button
+                    data-testid="button-logout"
+                    onClick={handleLogout}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-all"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Sign Out
+                  </button>
                 </>
               ) : (
                 <div className="hidden sm:flex items-center gap-2">
