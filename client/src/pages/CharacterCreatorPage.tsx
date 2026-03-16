@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import type { UserProfile } from "@shared/schema";
 import { OUTFIT_CATEGORIES } from "@/data/novelStory";
+import AuthGate from "@/components/AuthGate";
 
 // ── Layer images ──────────────────────────────────────────────────────────────
 import beaLayerBase          from "@assets/generated_images/bea-layer-base.png";
@@ -393,6 +394,7 @@ export default function CharacterCreatorPage() {
   const points = profile?.totalPoints ?? 0;
 
   return (
+    <AuthGate feature="Bea Voss Studio" description="Sign in to access the character creator and customise Bea's look.">
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col" style={{ fontFamily: "'Oxanium', sans-serif" }}>
 
       {/* ── Top bar ── */}
@@ -509,5 +511,6 @@ export default function CharacterCreatorPage() {
         </div>
       </div>
     </div>
+    </AuthGate>
   );
 }

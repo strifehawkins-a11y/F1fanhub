@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
+import AuthGate from "@/components/AuthGate";
 
 // Suit portrait images — one per racing suit
 import beaSuitDefault   from "@assets/generated_images/bea-suit-default.png";
@@ -443,6 +444,7 @@ export default function NovelPage() {
   }
 
   return (
+    <AuthGate feature="Bea's Story" description="Sign in to read Bea Voss's visual novel, customise her outfits and unlock exclusive chapters.">
     <div className="relative">
       {/* Dark scene background */}
       <div
@@ -705,5 +707,6 @@ export default function NovelPage() {
         </Tabs>
       </div>
     </div>
+    </AuthGate>
   );
 }

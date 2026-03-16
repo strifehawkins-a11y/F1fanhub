@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, XCircle, Trophy, RotateCcw, Brain, Zap } from "lucide-react";
+import AuthGate from "@/components/AuthGate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -212,6 +213,7 @@ export default function QuizPage() {
   const isCorrect = selectedAnswer === current.correctAnswer;
 
   return (
+    <AuthGate feature="the F1 Quiz" description="Sign in to test your F1 knowledge and earn points each round.">
     <div className="px-4 py-6 space-y-5">
       {/* Progress */}
       <div className="space-y-2">
@@ -315,5 +317,6 @@ export default function QuizPage() {
         </div>
       )}
     </div>
+    </AuthGate>
   );
 }

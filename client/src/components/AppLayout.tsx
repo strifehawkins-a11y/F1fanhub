@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap } from "lucide-react";
+import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
@@ -88,26 +88,49 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {/* Right section */}
             <div className="flex items-center gap-2 ml-auto">
-              {profile && (
-                <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
-                  <Zap className="w-3 h-3 text-primary" />
-                  <span className="font-racing text-xs font-black text-gray-900 tabular-nums">
-                    {profile.totalPoints.toLocaleString()}
-                  </span>
-                  <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
+              {user ? (
+                <>
+                  {profile && (
+                    <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
+                      <Zap className="w-3 h-3 text-primary" />
+                      <span className="font-racing text-xs font-black text-gray-900 tabular-nums">
+                        {profile.totalPoints.toLocaleString()}
+                      </span>
+                      <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
+                    </div>
+                  )}
+                  <Link href="/leaderboard">
+                    <Avatar
+                      className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
+                      data-testid="link-profile"
+                    >
+                      <AvatarImage src={(user as any)?.profileImageUrl || ""} />
+                      <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                </>
+              ) : (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Link href="/login">
+                    <button
+                      data-testid="button-guest-signin"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide border border-gray-200 text-gray-700 hover:border-primary hover:text-primary transition-all"
+                    >
+                      <LogIn className="w-3.5 h-3.5" /> Sign In
+                    </button>
+                  </Link>
+                  <Link href="/login">
+                    <button
+                      data-testid="button-guest-signup"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide bg-primary text-white hover:bg-red-700 transition-all shadow-sm shadow-primary/20"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> Join Free
+                    </button>
+                  </Link>
                 </div>
               )}
-              <Link href="/leaderboard">
-                <Avatar
-                  className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
-                  data-testid="link-profile"
-                >
-                  <AvatarImage src={(user as any)?.profileImageUrl || ""} />
-                  <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
 
               {/* Mobile hamburger */}
               <button
@@ -154,10 +177,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </button>
                 </Link>
               )}
+              {!user && (
+                <Link href="/login">
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide text-primary bg-primary/8 transition-all col-span-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In / Join
+                  </button>
+                </Link>
+              )}
             </div>
           </div>
         )}
       </header>
+
+      {/* Guest sign-in banner */}
+      {!user && (
+        <div className="bg-primary text-white px-4 py-2 flex items-center justify-between gap-3 text-center">
+          <p className="font-racing text-xs tracking-wide flex-1">
+            🏎️ Join F1 Paddock — earn points, unlock Bea's story, compete in quizzes &amp; climb the leaderboard
+          </p>
+          <Link href="/login">
+            <button
+              data-testid="button-guest-banner-join"
+              className="flex-shrink-0 px-3 py-1 rounded-md font-racing text-xs font-bold bg-white text-primary hover:bg-gray-100 transition-all"
+            >
+              Join Free →
+            </button>
+          </Link>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">

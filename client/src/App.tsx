@@ -41,7 +41,7 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -55,10 +55,7 @@ function Router() {
     );
   }
 
-  if (!isAuthenticated) {
-    if (location === "/login") return <LoginPage />;
-    return <Landing />;
-  }
+  if (location === "/login") return <LoginPage />;
 
   return <AuthenticatedApp />;
 }
