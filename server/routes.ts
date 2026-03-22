@@ -188,6 +188,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/articles/:id/view", async (req, res) => {
+    try {
+      const articleId = Number(req.params.id);
+      const visitorId = (req.headers["x-visitor-id"] as string) || "anonymous";
+      if (!visitorId) return res.status(400).json({ message: "Missing visitor id" });
+      await storage.recordArticleView(articleId, visitorId);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+
   app.post("/api/articles", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

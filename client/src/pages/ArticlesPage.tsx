@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { MessageSquare, Clock, Newspaper } from "lucide-react";
+import { MessageSquare, Clock, Newspaper, Eye } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function getCategoryFromTags(tags: string[] | null): string {
@@ -83,6 +83,9 @@ export default function ArticlesPage() {
                       <Clock className="w-3 h-3" />{estimateReadTime(heroArticle.content)} min
                     </span>
                     <span className="flex items-center gap-1 ml-auto">
+                      <Eye className="w-3 h-3" />{heroArticle.viewCount || 0}
+                    </span>
+                    <span className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" />{heroArticle.commentCount || 0}
                     </span>
                   </div>
@@ -125,6 +128,9 @@ export default function ArticlesPage() {
                         <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM") : ""}</span>
                         <span className="flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />{estimateReadTime(article.content)}m
+                        </span>
+                        <span className="flex items-center gap-0.5" data-testid={`text-view-count-${article.id}`}>
+                          <Eye className="w-2.5 h-2.5" />{article.viewCount || 0}
                         </span>
                         <span className="flex items-center gap-0.5">
                           <MessageSquare className="w-2.5 h-2.5" />{article.commentCount || 0}

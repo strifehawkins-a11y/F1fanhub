@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowLeft, MessageSquare, Send, Trash2, Clock } from "lucide-react";
+import { ArrowLeft, MessageSquare, Send, Trash2, Clock, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,16 @@ function getCategoryFromTags(tags: string[] | null): string {
 function estimateReadTime(content: string) {
   const words = content?.split(/\s+/).length || 0;
   return Math.max(1, Math.round(words / 200));
+}
+
+function getOrCreateVisitorId(): string {
+  const key = "f1_visitor_id";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
 }
 
 export default function ArticleDetailPage() {
@@ -51,6 +61,16 @@ export default function ArticleDetailPage() {
     },
     enabled: !!articleId,
   });
+
+  // Record this visit (fire-and-forget, unique per visitor)
+  useEffect(() => {
+    if (!articleId) return;
+    const visitorId = (user as any)?.id || getOrCreateVisitorId();
+    fetch(`/api/articles/${articleId}/view`, {
+      method: "POST",
+      headers: { "x-visitor-id": visitorId },
+    }).catch(() => {});
+  }, [articleId, (user as any)?.id]);
 
   const commentMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/articles/${articleId}/comments`, { content: comment }),
@@ -126,9 +146,15 @@ export default function ArticleDetailPage() {
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{readTime} min read</span>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 text-muted-foreground text-xs">
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span className="font-racing">{comments?.length || 0} comments</span>
+          <div className="ml-auto flex items-center gap-3 text-muted-foreground text-xs">
+            <span className="flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" />
+              <span className="font-racing" data-testid="text-article-view-count">{article.viewCount || 0} views</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="font-racing">{comments?.length || 0} comments</span>
+            </span>
           </div>
         </div>
       </div>

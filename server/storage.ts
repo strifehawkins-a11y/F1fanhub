@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, desc, asc, and, sql } from "drizzle-orm";
 import {
   userProfile, races, quizQuestions, quizAttempts,
-  forumPosts, forumComments, articles, articleComments, novelProgress,
+  forumPosts, forumComments, articles, articleComments, articleViews, novelProgress,
   driverStandings, constructorStandings,
   type UserProfile, type Race, type QuizQuestion, type QuizAttempt,
   type ForumPost, type ForumComment, type Article, type ArticleComment,
@@ -44,14 +44,15 @@ export interface IStorage {
   deleteForumComment(id: number, userId: string): Promise<boolean>;
 
   // Articles
-  getArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
-  getArticleById(id: number): Promise<(Article & { username: string | null; profileImageUrl: string | null }) | undefined>;
+  getArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null; commentCount: number; viewCount: number }>>;
+  getArticleById(id: number): Promise<(Article & { username: string | null; profileImageUrl: string | null; viewCount: number }) | undefined>;
   createArticle(article: InsertArticle): Promise<Article>;
   updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined>;
   deleteArticle(id: number): Promise<boolean>;
   getArticleComments(articleId: number): Promise<Array<ArticleComment & { username: string | null; profileImageUrl: string | null }>>;
   createArticleComment(comment: InsertArticleComment): Promise<ArticleComment>;
   deleteArticleComment(id: number, userId: string): Promise<boolean>;
+  recordArticleView(articleId: number, visitorId: string): Promise<void>;
 
   // Novel
   getNovelProgress(userId: string): Promise<NovelProgress | undefined>;
@@ -357,12 +358,19 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(articles.authorId, users.id))
       .orderBy(desc(articles.publishedAt));
 
-    const commentCounts = await db
-      .select({ articleId: articleComments.articleId, count: sql<number>`count(*)` })
-      .from(articleComments)
-      .groupBy(articleComments.articleId);
+    const [commentCounts, viewCounts] = await Promise.all([
+      db
+        .select({ articleId: articleComments.articleId, count: sql<number>`count(*)` })
+        .from(articleComments)
+        .groupBy(articleComments.articleId),
+      db
+        .select({ articleId: articleViews.articleId, count: sql<number>`count(distinct visitor_id)` })
+        .from(articleViews)
+        .groupBy(articleViews.articleId),
+    ]);
 
-    const countMap = new Map(commentCounts.map((c) => [c.articleId, Number(c.count)]));
+    const commentMap = new Map(commentCounts.map((c) => [c.articleId, Number(c.count)]));
+    const viewMap = new Map(viewCounts.map((v) => [v.articleId, Number(v.count)]));
 
     return results.map((a) => ({
       id: a.id,
@@ -376,7 +384,8 @@ export class DatabaseStorage implements IStorage {
       updatedAt: a.updatedAt,
       username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : "Admin",
       profileImageUrl: a.profileImageUrl,
-      commentCount: countMap.get(a.id) || 0,
+      commentCount: commentMap.get(a.id) || 0,
+      viewCount: viewMap.get(a.id) || 0,
     }));
   }
 
@@ -401,10 +410,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(articles.id, id));
 
     if (!result) return undefined;
+
+    const [viewResult] = await db
+      .select({ count: sql<number>`count(distinct visitor_id)` })
+      .from(articleViews)
+      .where(eq(articleViews.articleId, id));
+
     return {
       ...result,
       username: result.firstName ? `${result.firstName} ${result.lastName || ""}`.trim() : "Admin",
+      viewCount: Number(viewResult?.count || 0),
     };
+  }
+
+  async recordArticleView(articleId: number, visitorId: string): Promise<void> {
+    // Insert only if this visitor hasn't already viewed this article
+    await db
+      .insert(articleViews)
+      .values({ articleId, visitorId })
+      .onConflictDoNothing();
   }
 
   async createArticle(article: InsertArticle): Promise<Article> {

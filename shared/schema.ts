@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -84,6 +84,15 @@ export const articleComments = pgTable("article_comments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const articleViews = pgTable("article_views", {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id").notNull(),
+  visitorId: varchar("visitor_id").notNull(),
+  viewedAt: timestamp("viewed_at").defaultNow(),
+}, (t) => ({
+  uniqView: uniqueIndex("article_views_unique").on(t.articleId, t.visitorId),
+}));
+
 export const novelProgress = pgTable("novel_progress", {
   userId: varchar("user_id").primaryKey(),
   currentChapter: integer("current_chapter").default(1).notNull(),
@@ -144,6 +153,7 @@ export type ForumPost = typeof forumPosts.$inferSelect;
 export type ForumComment = typeof forumComments.$inferSelect;
 export type Article = typeof articles.$inferSelect;
 export type ArticleComment = typeof articleComments.$inferSelect;
+export type ArticleView = typeof articleViews.$inferSelect;
 export type NovelProgress = typeof novelProgress.$inferSelect;
 export type DriverStanding = typeof driverStandings.$inferSelect;
 export type ConstructorStanding = typeof constructorStandings.$inferSelect;
