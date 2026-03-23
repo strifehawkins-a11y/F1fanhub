@@ -101,6 +101,7 @@ export const polls = pgTable("polls", {
   closesAt: timestamp("closes_at"),
   createdAt: timestamp("created_at").defaultNow(),
   authorId: varchar("author_id").notNull(),
+  winnersRewarded: boolean("winners_rewarded").default(false).notNull(),
 });
 
 export const pollVotes = pgTable("poll_votes", {

@@ -74,6 +74,7 @@ export interface IStorage {
 
   // Polls
   getPolls(): Promise<Array<Poll & { votes: number[]; totalVotes: number }>>;
+  rewardPollWinners(pollId: number): Promise<number>;
   getPollById(id: number): Promise<(Poll & { votes: number[]; totalVotes: number }) | undefined>;
   createPoll(poll: InsertPoll): Promise<Poll>;
   updatePoll(id: number, data: Partial<InsertPoll>): Promise<Poll | undefined>;
@@ -556,6 +557,47 @@ export class DatabaseStorage implements IStorage {
   async getPolls() {
     const allPolls = await db.select().from(polls).orderBy(desc(polls.createdAt));
     return Promise.all(allPolls.map(p => this.buildPollWithVotes(p)));
+  }
+
+  async rewardPollWinners(pollId: number): Promise<number> {
+    const [poll] = await db.select().from(polls).where(eq(polls.id, pollId));
+    if (!poll || poll.winnersRewarded) return 0;
+
+    const votesRows = await db
+      .select({ optionIndex: pollVotes.optionIndex, count: sql<number>`count(*)` })
+      .from(pollVotes)
+      .where(eq(pollVotes.pollId, pollId))
+      .groupBy(pollVotes.optionIndex);
+
+    if (votesRows.length === 0) return 0;
+
+    const counts = poll.options.map((_, i) => {
+      const row = votesRows.find(r => r.optionIndex === i);
+      return Number(row?.count || 0);
+    });
+    const winnerIndex = counts.indexOf(Math.max(...counts));
+
+    const winnerVotes = await db
+      .select({ visitorId: pollVotes.visitorId })
+      .from(pollVotes)
+      .where(and(eq(pollVotes.pollId, pollId), eq(pollVotes.optionIndex, winnerIndex)));
+
+    let rewarded = 0;
+    for (const { visitorId } of winnerVotes) {
+      const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, visitorId));
+      if (profile) {
+        await db.update(userProfile)
+          .set({
+            totalPoints: sql`${userProfile.totalPoints} + 500`,
+            lifetimePoints: sql`${userProfile.lifetimePoints} + 500`,
+          })
+          .where(eq(userProfile.userId, visitorId));
+        rewarded++;
+      }
+    }
+
+    await db.update(polls).set({ winnersRewarded: true }).where(eq(polls.id, pollId));
+    return rewarded;
   }
 
   async getPollById(id: number) {

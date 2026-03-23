@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, CheckCircle2, Clock, Lock } from "lucide-react";
+import { BarChart3, CheckCircle2, Clock, Lock, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
@@ -65,13 +65,25 @@ function PollCard({ poll }: { poll: any }) {
           </h3>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {isClosed ? (
-              <span className="flex items-center gap-1 font-racing text-[9px] text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                <Lock className="w-2.5 h-2.5" /> Closed
-              </span>
+              <>
+                {poll.winnersRewarded && (
+                  <span className="flex items-center gap-1 font-racing text-[9px] text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                    <Zap className="w-2.5 h-2.5" /> Rewarded
+                  </span>
+                )}
+                <span className="flex items-center gap-1 font-racing text-[9px] text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                  <Lock className="w-2.5 h-2.5" /> Closed
+                </span>
+              </>
             ) : (
-              <span className="flex items-center gap-1 font-racing text-[9px] text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Live
-              </span>
+              <>
+                <span className="flex items-center gap-1 font-racing text-[9px] text-primary bg-primary/10 px-2 py-1 rounded-full">
+                  <Zap className="w-2.5 h-2.5" /> 500 pts to winners
+                </span>
+                <span className="flex items-center gap-1 font-racing text-[9px] text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Live
+                </span>
+              </>
             )}
           </div>
         </div>

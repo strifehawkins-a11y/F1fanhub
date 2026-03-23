@@ -109,6 +109,9 @@ function PollsWidget() {
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <BarChart3 className="w-3.5 h-3.5 text-primary" />
         <span className="font-racing text-xs font-bold tracking-widest uppercase text-gray-900">Fan Poll</span>
+        <span className="flex items-center gap-0.5 font-racing text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+          <Zap className="w-2.5 h-2.5" /> 500 pts
+        </span>
         {activePolls.length > 1 && (
           <div className="ml-auto flex items-center gap-1">
             <button
@@ -168,7 +171,7 @@ function PollsWidget() {
         </div>
 
         {voted && (
-          <p className="text-[10px] text-gray-400 text-center font-racing">{total} vote{total !== 1 ? "s" : ""} cast</p>
+          <p className="text-[10px] text-gray-400 text-center font-racing">{total} vote{total !== 1 ? "s" : ""} cast · 500 pts awarded to winners when poll closes</p>
         )}
       </div>
 

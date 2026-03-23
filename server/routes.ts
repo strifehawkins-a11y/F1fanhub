@@ -339,8 +339,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const userId = req.user.claims.sub;
       const admin = await storage.isAdmin(userId);
       if (!admin) return res.status(403).json({ message: "Admin access required" });
-      const updated = await storage.updatePoll(Number(req.params.id), req.body);
+      const pollId = Number(req.params.id);
+      const updated = await storage.updatePoll(pollId, req.body);
       if (!updated) return res.status(404).json({ message: "Poll not found" });
+      // Auto-reward winners when poll is closed
+      if (req.body.isActive === false && !updated.winnersRewarded) {
+        const rewarded = await storage.rewardPollWinners(pollId);
+        return res.json({ ...updated, rewardedCount: rewarded });
+      }
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update poll" });

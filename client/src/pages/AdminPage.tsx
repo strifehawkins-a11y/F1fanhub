@@ -117,7 +117,17 @@ export default function AdminPage() {
   });
   const updatePollMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/polls/${id}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/polls"] }); setShowPollForm(false); setEditingPollId(null); setPollForm(emptyPollForm); toast({ title: "Poll updated!" }); },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/polls"] });
+      setShowPollForm(false);
+      setEditingPollId(null);
+      setPollForm(emptyPollForm);
+      if (result?.rewardedCount != null) {
+        toast({ title: "Poll closed & winners rewarded!", description: `${result.rewardedCount} user${result.rewardedCount !== 1 ? "s" : ""} received 500 points for voting correctly.` });
+      } else {
+        toast({ title: "Poll updated!" });
+      }
+    },
     onError: () => toast({ title: "Error", variant: "destructive" }),
   });
   const deletePollMutation = useMutation({
