@@ -272,6 +272,93 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ---- POLLS ----
+  app.get("/api/polls", async (req, res) => {
+    try {
+      const allPolls = await storage.getPolls();
+      res.json(allPolls);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch polls" });
+    }
+  });
+
+  app.get("/api/polls/:id", async (req, res) => {
+    try {
+      const poll = await storage.getPollById(Number(req.params.id));
+      if (!poll) return res.status(404).json({ message: "Poll not found" });
+      res.json(poll);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch poll" });
+    }
+  });
+
+  app.get("/api/polls/:id/my-vote", async (req, res) => {
+    try {
+      const visitorId = (req.headers["x-visitor-id"] as string) || "anonymous";
+      const vote = await storage.getVisitorVote(Number(req.params.id), visitorId);
+      res.json({ optionIndex: vote });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch vote" });
+    }
+  });
+
+  app.post("/api/polls/:id/vote", async (req, res) => {
+    try {
+      const pollId = Number(req.params.id);
+      const visitorId = (req.headers["x-visitor-id"] as string) || "anonymous";
+      const { optionIndex } = req.body;
+      if (typeof optionIndex !== "number") return res.status(400).json({ message: "Invalid option" });
+      const existingVote = await storage.getVisitorVote(pollId, visitorId);
+      if (existingVote !== null) return res.status(409).json({ message: "Already voted" });
+      await storage.voteOnPoll(pollId, visitorId, optionIndex);
+      const updated = await storage.getPollById(pollId);
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to record vote" });
+    }
+  });
+
+  app.post("/api/polls", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const { question, options, isActive, closesAt } = req.body;
+      if (!question || !Array.isArray(options) || options.length < 2) {
+        return res.status(400).json({ message: "Question and at least 2 options required" });
+      }
+      const poll = await storage.createPoll({ question, options, isActive: isActive ?? true, closesAt: closesAt || null, authorId: userId });
+      res.json(poll);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create poll" });
+    }
+  });
+
+  app.patch("/api/polls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const updated = await storage.updatePoll(Number(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Poll not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update poll" });
+    }
+  });
+
+  app.delete("/api/polls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      await storage.deletePoll(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete poll" });
+    }
+  });
+
   // ---- NOVEL ----
   app.get("/api/novel/progress", isAuthenticated, async (req: any, res) => {
     try {

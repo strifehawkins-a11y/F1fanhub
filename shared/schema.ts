@@ -93,6 +93,26 @@ export const articleViews = pgTable("article_views", {
   uniqView: uniqueIndex("article_views_unique").on(t.articleId, t.visitorId),
 }));
 
+export const polls = pgTable("polls", {
+  id: serial("id").primaryKey(),
+  question: text("question").notNull(),
+  options: text("options").array().notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  closesAt: timestamp("closes_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  authorId: varchar("author_id").notNull(),
+});
+
+export const pollVotes = pgTable("poll_votes", {
+  id: serial("id").primaryKey(),
+  pollId: integer("poll_id").notNull(),
+  visitorId: varchar("visitor_id").notNull(),
+  optionIndex: integer("option_index").notNull(),
+  votedAt: timestamp("voted_at").defaultNow(),
+}, (t) => ({
+  uniqVote: uniqueIndex("poll_votes_unique").on(t.pollId, t.visitorId),
+}));
+
 export const novelProgress = pgTable("novel_progress", {
   userId: varchar("user_id").primaryKey(),
   currentChapter: integer("current_chapter").default(1).notNull(),
@@ -144,6 +164,8 @@ export const insertArticleCommentSchema = createInsertSchema(articleComments).om
 export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({ id: true, completedAt: true });
 export const insertDriverStandingSchema = createInsertSchema(driverStandings).omit({ id: true });
 export const insertConstructorStandingSchema = createInsertSchema(constructorStandings).omit({ id: true });
+export const insertPollSchema = createInsertSchema(polls).omit({ id: true, createdAt: true });
+export type InsertPoll = z.infer<typeof insertPollSchema>;
 
 export type UserProfile = typeof userProfile.$inferSelect;
 export type Race = typeof races.$inferSelect;
@@ -154,6 +176,8 @@ export type ForumComment = typeof forumComments.$inferSelect;
 export type Article = typeof articles.$inferSelect;
 export type ArticleComment = typeof articleComments.$inferSelect;
 export type ArticleView = typeof articleViews.$inferSelect;
+export type Poll = typeof polls.$inferSelect;
+export type PollVote = typeof pollVotes.$inferSelect;
 export type NovelProgress = typeof novelProgress.$inferSelect;
 export type DriverStanding = typeof driverStandings.$inferSelect;
 export type ConstructorStanding = typeof constructorStandings.$inferSelect;

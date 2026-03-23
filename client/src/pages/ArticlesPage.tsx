@@ -103,7 +103,14 @@ export default function ArticlesPage() {
                     data-testid={`card-article-${article.id}`}
                     className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all group h-full flex flex-col"
                   >
-                    <div className="h-0.5 bg-gradient-to-r from-primary/80 to-primary/20" />
+                    {article.imageUrl ? (
+                      <div className="relative h-36 overflow-hidden">
+                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                      </div>
+                    ) : (
+                      <div className="h-0.5 bg-gradient-to-r from-primary/80 to-primary/20" />
+                    )}
                     <div className="p-4 flex flex-col flex-1">
                       <span className="inline-block font-racing text-[9px] font-bold tracking-[0.15em] uppercase text-primary mb-2">
                         {getCategoryFromTags(article.tags)}

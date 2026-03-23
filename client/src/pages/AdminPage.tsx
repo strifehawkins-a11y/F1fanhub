@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,7 +19,15 @@ const emptyForm: ArticleForm = { title: "", excerpt: "", content: "", imageUrl: 
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
 
-type Tab = "articles" | "standings" | "races";
+type Tab = "articles" | "standings" | "races" | "polls";
+
+interface PollForm {
+  question: string;
+  options: string[];
+  isActive: boolean;
+  closesAt: string;
+}
+const emptyPollForm: PollForm = { question: "", options: ["", ""], isActive: true, closesAt: "" };
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -45,8 +53,14 @@ export default function AdminPage() {
   const [editingRaceId, setEditingRaceId] = useState<number | null>(null);
   const [raceForm, setRaceForm] = useState<Partial<Race>>({});
 
+  // Poll state
+  const [showPollForm, setShowPollForm] = useState(false);
+  const [editingPollId, setEditingPollId] = useState<number | null>(null);
+  const [pollForm, setPollForm] = useState<PollForm>(emptyPollForm);
+
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const { data: articles, isLoading } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const { data: pollsData } = useQuery<any[]>({ queryKey: ["/api/polls"] });
   const { data: drivers } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
   const { data: constructors } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
   const { data: races } = useQuery<Race[]>({
@@ -95,6 +109,50 @@ export default function AdminPage() {
     onError: () => toast({ title: "Error updating race", variant: "destructive" }),
   });
 
+  // Poll mutations
+  const createPollMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/polls", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/polls"] }); setShowPollForm(false); setPollForm(emptyPollForm); toast({ title: "Poll created!" }); },
+    onError: () => toast({ title: "Error", variant: "destructive" }),
+  });
+  const updatePollMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/polls/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/polls"] }); setShowPollForm(false); setEditingPollId(null); setPollForm(emptyPollForm); toast({ title: "Poll updated!" }); },
+    onError: () => toast({ title: "Error", variant: "destructive" }),
+  });
+  const deletePollMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/polls/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/polls"] }); toast({ title: "Poll deleted" }); },
+  });
+
+  const handlePollSubmit = () => {
+    const validOptions = pollForm.options.map(o => o.trim()).filter(Boolean);
+    if (!pollForm.question.trim() || validOptions.length < 2) {
+      toast({ title: "Question and at least 2 options required", variant: "destructive" });
+      return;
+    }
+    const data = {
+      question: pollForm.question.trim(),
+      options: validOptions,
+      isActive: pollForm.isActive,
+      closesAt: pollForm.closesAt || null,
+    };
+    if (editingPollId) updatePollMutation.mutate({ id: editingPollId, data });
+    else createPollMutation.mutate(data);
+  };
+
+  const handleEditPoll = (poll: any) => {
+    setEditingPollId(poll.id);
+    setPollForm({
+      question: poll.question,
+      options: poll.options,
+      isActive: poll.isActive,
+      closesAt: poll.closesAt ? new Date(poll.closesAt).toISOString().slice(0, 16) : "",
+    });
+    setShowPollForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleSubmit = () => {
     if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) {
       toast({ title: "Fill in all required fields", variant: "destructive" });
@@ -131,6 +189,7 @@ export default function AdminPage() {
 
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "articles", label: "Articles", icon: Newspaper },
+    { key: "polls", label: "Polls", icon: BarChart3 },
     { key: "standings", label: "Standings", icon: BarChart2 },
     { key: "races", label: "Races", icon: Calendar },
   ];
@@ -185,6 +244,7 @@ export default function AdminPage() {
                 <div>
                   <label className={labelCls}>Full Content * <span className="normal-case tracking-normal text-gray-300">(blank line = new paragraph)</span></label>
                   <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="Write your full article here..." rows={12} data-testid="input-article-content" className={inputCls + " resize-y font-mono"} />
+                  <p className="mt-1 text-[10px] text-gray-300">Embed an image inline: <code className="bg-gray-100 px-1 rounded">![Caption text](https://image-url.jpg)</code> on its own blank-separated line</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -245,6 +305,135 @@ export default function AdminPage() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button onClick={() => handleEdit(article)} data-testid={`button-edit-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-gray-700 hover:bg-gray-50 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => deleteMutation.mutate(article.id)} data-testid={`button-delete-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── POLLS TAB ── */}
+      {tab === "polls" && (
+        <div className="space-y-4">
+          {showPollForm ? (
+            <div className="bg-white border border-primary/20 shadow-md rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-racing text-lg font-black text-gray-900">{editingPollId ? "Edit Poll" : "Create New Poll"}</h2>
+                <button onClick={() => { setShowPollForm(false); setEditingPollId(null); setPollForm(emptyPollForm); }} className="text-gray-400 hover:text-gray-700">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Question *</label>
+                  <input value={pollForm.question} onChange={e => setPollForm({ ...pollForm, question: e.target.value })} placeholder="Who will win the next race?" data-testid="input-poll-question" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Options * <span className="normal-case tracking-normal text-gray-300">(min 2)</span></label>
+                  <div className="space-y-2">
+                    {pollForm.options.map((opt, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          value={opt}
+                          onChange={e => {
+                            const next = [...pollForm.options];
+                            next[i] = e.target.value;
+                            setPollForm({ ...pollForm, options: next });
+                          }}
+                          placeholder={`Option ${i + 1}`}
+                          data-testid={`input-poll-option-${i}`}
+                          className={inputCls}
+                        />
+                        {pollForm.options.length > 2 && (
+                          <button
+                            onClick={() => setPollForm({ ...pollForm, options: pollForm.options.filter((_, j) => j !== i) })}
+                            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {pollForm.options.length < 6 && (
+                    <button
+                      onClick={() => setPollForm({ ...pollForm, options: [...pollForm.options, ""] })}
+                      className="mt-2 flex items-center gap-1.5 text-xs text-primary font-racing hover:text-primary/80 transition-all"
+                    >
+                      <Plus className="w-3 h-3" /> Add option
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Closes at (optional)</label>
+                    <input type="datetime-local" value={pollForm.closesAt} onChange={e => setPollForm({ ...pollForm, closesAt: e.target.value })} data-testid="input-poll-closes-at" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Status</label>
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        onClick={() => setPollForm({ ...pollForm, isActive: true })}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-racing text-xs font-bold transition-all ${pollForm.isActive ? "bg-green-100 text-green-700 border border-green-200" : "bg-gray-50 text-gray-400 border border-gray-200"}`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Active
+                      </button>
+                      <button
+                        onClick={() => setPollForm({ ...pollForm, isActive: false })}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-racing text-xs font-bold transition-all ${!pollForm.isActive ? "bg-red-50 text-red-500 border border-red-200" : "bg-gray-50 text-gray-400 border border-gray-200"}`}
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Closed
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={handlePollSubmit} disabled={createPollMutation.isPending || updatePollMutation.isPending} data-testid="button-save-poll" className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-racing text-sm font-bold rounded-lg hover:bg-red-700 transition-all disabled:opacity-50">
+                  <Save className="w-4 h-4" />
+                  {editingPollId ? "Save Changes" : "Create Poll"}
+                </button>
+                <button onClick={() => { setShowPollForm(false); setEditingPollId(null); setPollForm(emptyPollForm); }} className="px-6 py-2.5 border border-gray-200 font-racing text-sm text-gray-400 rounded-lg hover:text-gray-700 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => { setShowPollForm(true); setEditingPollId(null); setPollForm(emptyPollForm); }} data-testid="button-new-poll" className="flex items-center gap-2 px-5 py-3 bg-primary text-white font-racing text-sm font-bold rounded-xl hover:bg-red-700 transition-all shadow-md shadow-primary/20">
+              <Plus className="w-4 h-4" />
+              Create New Poll
+            </button>
+          )}
+
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="font-racing text-sm font-black text-gray-900">{pollsData?.length || 0} Polls</h2>
+            </div>
+            {!pollsData || pollsData.length === 0 ? (
+              <div className="text-center py-12 text-gray-400"><BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" /><p className="font-racing text-sm">No polls yet</p></div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {pollsData.map((poll) => (
+                  <div key={poll.id} className="px-5 py-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${poll.isActive ? "bg-green-500" : "bg-gray-300"}`} />
+                          <h3 className="font-racing text-sm font-black text-gray-900 line-clamp-1">{poll.question}</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[10px] text-gray-400">
+                          <span>{poll.options.length} options</span>
+                          <span>·</span>
+                          <span>{poll.totalVotes} vote{poll.totalVotes !== 1 ? "s" : ""}</span>
+                          {poll.closesAt && <span>· closes {format(new Date(poll.closesAt), "d MMM yyyy")}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => handleEditPoll(poll)} data-testid={`button-edit-poll-${poll.id}`} className="p-1.5 rounded text-gray-300 hover:text-gray-700 hover:bg-gray-50 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => deletePollMutation.mutate(poll.id)} data-testid={`button-delete-poll-${poll.id}`} className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   </div>

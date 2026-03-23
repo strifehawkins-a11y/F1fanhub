@@ -3,12 +3,13 @@ import { eq, desc, asc, and, sql } from "drizzle-orm";
 import {
   userProfile, races, quizQuestions, quizAttempts,
   forumPosts, forumComments, articles, articleComments, articleViews, novelProgress,
-  driverStandings, constructorStandings,
+  driverStandings, constructorStandings, polls, pollVotes,
   type UserProfile, type Race, type QuizQuestion, type QuizAttempt,
   type ForumPost, type ForumComment, type Article, type ArticleComment,
   type NovelProgress, type InsertForumPost, type InsertForumComment,
   type InsertArticle, type InsertArticleComment,
   type DriverStanding, type ConstructorStanding,
+  type Poll, type InsertPoll,
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 
@@ -70,6 +71,15 @@ export interface IStorage {
 
   // Race updates
   updateRace(id: number, data: Partial<Race>): Promise<Race | undefined>;
+
+  // Polls
+  getPolls(): Promise<Array<Poll & { votes: number[]; totalVotes: number }>>;
+  getPollById(id: number): Promise<(Poll & { votes: number[]; totalVotes: number }) | undefined>;
+  createPoll(poll: InsertPoll): Promise<Poll>;
+  updatePoll(id: number, data: Partial<InsertPoll>): Promise<Poll | undefined>;
+  deletePoll(id: number): Promise<boolean>;
+  voteOnPoll(pollId: number, visitorId: string, optionIndex: number): Promise<boolean>;
+  getVisitorVote(pollId: number, visitorId: string): Promise<number | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -528,6 +538,63 @@ export class DatabaseStorage implements IStorage {
   async updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined> {
     const [result] = await db.update(constructorStandings).set(data).where(eq(constructorStandings.id, id)).returning();
     return result;
+  }
+
+  private async buildPollWithVotes(poll: Poll) {
+    const votesRows = await db
+      .select({ optionIndex: pollVotes.optionIndex, count: sql<number>`count(*)` })
+      .from(pollVotes)
+      .where(eq(pollVotes.pollId, poll.id))
+      .groupBy(pollVotes.optionIndex);
+    const votes = poll.options.map((_, i) => {
+      const row = votesRows.find(r => r.optionIndex === i);
+      return Number(row?.count || 0);
+    });
+    return { ...poll, votes, totalVotes: votes.reduce((a, b) => a + b, 0) };
+  }
+
+  async getPolls() {
+    const allPolls = await db.select().from(polls).orderBy(desc(polls.createdAt));
+    return Promise.all(allPolls.map(p => this.buildPollWithVotes(p)));
+  }
+
+  async getPollById(id: number) {
+    const [poll] = await db.select().from(polls).where(eq(polls.id, id));
+    if (!poll) return undefined;
+    return this.buildPollWithVotes(poll);
+  }
+
+  async createPoll(poll: InsertPoll): Promise<Poll> {
+    const [result] = await db.insert(polls).values(poll).returning();
+    return result;
+  }
+
+  async updatePoll(id: number, data: Partial<InsertPoll>): Promise<Poll | undefined> {
+    const [result] = await db.update(polls).set(data).where(eq(polls.id, id)).returning();
+    return result;
+  }
+
+  async deletePoll(id: number): Promise<boolean> {
+    await db.delete(pollVotes).where(eq(pollVotes.pollId, id));
+    const result = await db.delete(polls).where(eq(polls.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async voteOnPoll(pollId: number, visitorId: string, optionIndex: number): Promise<boolean> {
+    try {
+      await db.insert(pollVotes).values({ pollId, visitorId, optionIndex }).onConflictDoNothing();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getVisitorVote(pollId: number, visitorId: string): Promise<number | null> {
+    const [row] = await db
+      .select()
+      .from(pollVotes)
+      .where(and(eq(pollVotes.pollId, pollId), eq(pollVotes.visitorId, visitorId)));
+    return row?.optionIndex ?? null;
   }
 }
 

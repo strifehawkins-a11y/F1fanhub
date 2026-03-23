@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut } from "lucide-react";
+import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
@@ -15,6 +15,7 @@ const navItems = [
   { path: "/standings", label: "Standings", icon: BarChart2 },
   { path: "/articles", label: "Articles", icon: BookOpen },
   { path: "/forum", label: "Forum", icon: MessageSquare },
+  { path: "/polls", label: "Polls", icon: BarChart3 },
   { path: "/quiz", label: "Quiz", icon: Brain },
   { path: "/novel", label: "Gina", icon: Heart },
   { path: "/leaderboard", label: "Rankings", icon: Trophy },

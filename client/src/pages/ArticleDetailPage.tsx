@@ -159,6 +159,19 @@ export default function ArticleDetailPage() {
         </div>
       </div>
 
+      {/* Cover image */}
+      {article.imageUrl && (
+        <div className="rounded-xl overflow-hidden max-h-80">
+          <img
+            src={article.imageUrl}
+            alt={article.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            data-testid="img-article-cover"
+          />
+        </div>
+      )}
+
       {/* Article body */}
       <div className="space-y-5">
         {/* Excerpt as pull quote */}
@@ -166,11 +179,27 @@ export default function ArticleDetailPage() {
           <p className="text-base font-medium text-foreground/80 leading-relaxed italic">{article.excerpt}</p>
         </blockquote>
 
-        {/* Content */}
+        {/* Content — supports ![caption](url) for inline images */}
         <div className="space-y-4">
-          {article.content.split("\n\n").map((para: string, i: number) => (
-            <p key={i} className="text-[15px] text-foreground/90 leading-[1.8]">{para}</p>
-          ))}
+          {article.content.split("\n\n").map((para: string, i: number) => {
+            const imgMatch = para.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+            if (imgMatch) {
+              return (
+                <figure key={i} className="my-4">
+                  <img
+                    src={imgMatch[2]}
+                    alt={imgMatch[1] || ""}
+                    className="w-full rounded-xl object-cover max-h-96"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {imgMatch[1] && (
+                    <figcaption className="text-center text-xs text-muted-foreground mt-2 italic">{imgMatch[1]}</figcaption>
+                  )}
+                </figure>
+              );
+            }
+            return <p key={i} className="text-[15px] text-foreground/90 leading-[1.8]">{para}</p>;
+          })}
         </div>
 
         {/* Tags */}
