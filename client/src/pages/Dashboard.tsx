@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
-import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Play, Edit2, X, Save } from "lucide-react";
+import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Play, Edit2, X, Save, BarChart3, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
@@ -54,6 +54,131 @@ function VideoBanner() {
       {/* Cinematic overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
+    </div>
+  );
+}
+
+function PollsWidget() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [idx, setIdx] = useState(0);
+
+  const getVisitorId = () => {
+    if (user?.id) return user.id;
+    let id = localStorage.getItem("f1_visitor_id");
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem("f1_visitor_id", id); }
+    return id;
+  };
+  const visitorId = getVisitorId();
+
+  const { data: pollsData, isLoading } = useQuery<any[]>({ queryKey: ["/api/polls"] });
+  const activePolls = (pollsData || []).filter((p: any) => p.isActive && (!p.closesAt || new Date(p.closesAt) > new Date()));
+
+  const poll = activePolls[idx];
+
+  const { data: myVote } = useQuery<{ optionIndex: number | null }>({
+    queryKey: ["/api/polls", poll?.id, "my-vote", visitorId],
+    queryFn: () => poll ? fetch(`/api/polls/${poll.id}/my-vote`, { headers: { "x-visitor-id": visitorId } }).then(r => r.json()) : Promise.resolve({ optionIndex: null }),
+    enabled: !!poll,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: (optionIndex: number) => fetch(`/api/polls/${poll.id}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-visitor-id": visitorId },
+      body: JSON.stringify({ optionIndex }),
+    }).then(r => r.json()),
+    onSuccess: (updatedPoll) => {
+      queryClient.setQueryData(["/api/polls"], (old: any[]) =>
+        (old || []).map((p: any) => p.id === updatedPoll.id ? updatedPoll : p)
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/polls", poll.id, "my-vote", visitorId] });
+    },
+  });
+
+  const voted = myVote?.optionIndex != null;
+  const total = poll ? (poll.options as string[]).reduce((_: any, __: any, i: number) => _ + (poll.voteCounts?.[i] || 0), 0) : 0;
+  const maxVotes = poll ? Math.max(1, ...((poll.options as string[]).map((_: any, i: number) => poll.voteCounts?.[i] || 0))) : 1;
+
+  if (isLoading) return <Skeleton className="h-40 w-full rounded-xl" />;
+  if (!poll) return null;
+
+  return (
+    <div className="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden">
+      <div className="h-0.5 bg-gradient-to-r from-primary to-primary/20" />
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+        <BarChart3 className="w-3.5 h-3.5 text-primary" />
+        <span className="font-racing text-xs font-bold tracking-widest uppercase text-gray-900">Fan Poll</span>
+        {activePolls.length > 1 && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setIdx(i => (i - 1 + activePolls.length) % activePolls.length)}
+              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              data-testid="button-poll-prev"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <span className="font-racing text-[9px] text-gray-400">{idx + 1}/{activePolls.length}</span>
+            <button
+              onClick={() => setIdx(i => (i + 1) % activePolls.length)}
+              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              data-testid="button-poll-next"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 space-y-3">
+        <p className="font-racing text-xs font-bold text-gray-900 leading-snug">{poll.question}</p>
+
+        <div className="space-y-2">
+          {(poll.options as string[]).map((opt: string, i: number) => {
+            const votes = poll.voteCounts?.[i] || 0;
+            const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
+            const isWinner = votes === maxVotes && total > 0;
+            const isMine = myVote?.optionIndex === i;
+
+            return voted ? (
+              <div key={i} className="space-y-0.5">
+                <div className="flex justify-between items-center">
+                  <span className={`text-[11px] font-medium truncate pr-2 ${isMine ? "text-primary font-bold" : "text-gray-700"}`}>{opt}</span>
+                  <span className={`text-[10px] font-racing font-bold shrink-0 ${isWinner ? "text-primary" : "text-gray-400"}`}>{pct}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${isMine ? "bg-primary" : isWinner ? "bg-primary/40" : "bg-gray-200"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <button
+                key={i}
+                onClick={() => voteMutation.mutate(i)}
+                disabled={voteMutation.isPending}
+                data-testid={`button-poll-option-${i}`}
+                className="w-full text-left px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 hover:border-primary/40 hover:bg-primary/5 text-[11px] text-gray-700 font-medium transition-all"
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+
+        {voted && (
+          <p className="text-[10px] text-gray-400 text-center font-racing">{total} vote{total !== 1 ? "s" : ""} cast</p>
+        )}
+      </div>
+
+      <div className="px-4 pb-3">
+        <Link href="/polls">
+          <button className="w-full text-center font-racing text-[10px] text-gray-400 hover:text-primary transition-colors flex items-center justify-center gap-1">
+            View All Polls <ChevronRight className="w-3 h-3" />
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }
@@ -485,6 +610,7 @@ export default function Dashboard() {
         {/* Right: sidebar */}
         <div className="space-y-4">
           {races && <NextRaceWidget races={races} profile={profile} />}
+          <PollsWidget />
           <MiniStandings
             drivers={driverStandings || []}
             constructors={constructorStandings || []}

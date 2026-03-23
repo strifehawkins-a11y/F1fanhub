@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings, localCredentials } from "@shared/schema";
+import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings, localCredentials, polls } from "@shared/schema";
 import { sql, eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { authStorage } from "./replit_integrations/auth/storage";
@@ -200,6 +200,42 @@ export async function seedDatabase() {
     lifetimePoints: 0,
     isAdmin: true,
   }).onConflictDoUpdate({ target: userProfile.userId, set: { isAdmin: true } });
+
+  // Seed polls
+  const existingPolls = await db.select().from(polls).limit(1);
+  if (existingPolls.length === 0) {
+    await db.insert(polls).values([
+      {
+        question: "Who will win the 2026 F1 World Championship?",
+        options: ["Lando Norris", "Max Verstappen", "Lewis Hamilton", "Charles Leclerc", "George Russell", "Oscar Piastri"],
+        isActive: true,
+        closesAt: null,
+        authorId: adminUserId,
+      },
+      {
+        question: "Which team will win the 2026 Constructors' Championship?",
+        options: ["McLaren", "Red Bull Racing", "Ferrari", "Mercedes", "Aston Martin"],
+        isActive: true,
+        closesAt: null,
+        authorId: adminUserId,
+      },
+      {
+        question: "Who will score the most poles in 2026?",
+        options: ["Max Verstappen", "Lando Norris", "Charles Leclerc", "Lewis Hamilton", "George Russell"],
+        isActive: true,
+        closesAt: null,
+        authorId: adminUserId,
+      },
+      {
+        question: "Which circuit produces the best racing in 2026?",
+        options: ["Monaco", "Silverstone", "Suzuka", "Spa-Francorchamps", "Monza", "Interlagos"],
+        isActive: true,
+        closesAt: null,
+        authorId: adminUserId,
+      },
+    ]);
+    console.log("Polls seeded.");
+  }
 
   console.log("Database seeding complete.");
 }
