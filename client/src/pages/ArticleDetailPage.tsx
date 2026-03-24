@@ -62,6 +62,80 @@ export default function ArticleDetailPage() {
     enabled: !!articleId,
   });
 
+  // Dynamic SEO meta tags
+  useEffect(() => {
+    if (!article) return;
+    const siteTitle = "F1 Paddock";
+    const fullTitle = `${article.title} | ${siteTitle}`;
+    const description = article.excerpt || `Read ${article.title} on F1 Paddock.`;
+    const url = `${window.location.origin}/articles/${articleId}`;
+    const image = article.imageUrl || "";
+
+    document.title = fullTitle;
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        if (attr === "property") el.setAttribute("property", selector.match(/\[property="([^"]+)"\]/)?.[1] || "");
+        else el.setAttribute("name", selector.match(/\[name="([^"]+)"\]/)?.[1] || "");
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", value);
+    };
+
+    setMeta('meta[name="description"]', "name", description);
+    setMeta('meta[name="author"]', "name", article.username || "F1 Paddock");
+    setMeta('meta[name="keywords"]', "name", [
+      "Formula 1", "F1", ...(article.tags || [])
+    ].join(", "));
+
+    setMeta('meta[property="og:title"]', "property", fullTitle);
+    setMeta('meta[property="og:description"]', "property", description);
+    setMeta('meta[property="og:url"]', "property", url);
+    setMeta('meta[property="og:type"]', "property", "article");
+    if (image) setMeta('meta[property="og:image"]', "property", image);
+
+    setMeta('meta[name="twitter:title"]', "name", fullTitle);
+    setMeta('meta[name="twitter:description"]', "name", description);
+    if (image) setMeta('meta[name="twitter:image"]', "name", image);
+
+    const canonical = (document.querySelector('link[rel="canonical"]') as HTMLLinkElement) ||
+      (() => { const l = document.createElement("link"); l.rel = "canonical"; document.head.appendChild(l); return l; })();
+    canonical.href = url;
+
+    // Article structured data (JSON-LD)
+    const existing = document.getElementById("article-ld-json");
+    if (existing) existing.remove();
+    const script = document.createElement("script");
+    script.id = "article-ld-json";
+    script.type = "application/ld+json";
+    script.text = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": article.title,
+      "description": description,
+      "url": url,
+      "image": image || undefined,
+      "datePublished": article.publishedAt,
+      "dateModified": article.updatedAt || article.publishedAt,
+      "author": { "@type": "Person", "name": article.username || "F1 Paddock" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "F1 Paddock",
+        "url": window.location.origin
+      },
+      "keywords": (article.tags || []).join(", "),
+      "articleSection": "Formula 1",
+    });
+    document.head.appendChild(script);
+
+    return () => {
+      document.title = "F1 Paddock – The Ultimate F1 Fan Experience";
+      document.getElementById("article-ld-json")?.remove();
+    };
+  }, [article, articleId]);
+
   // Record this visit (fire-and-forget, unique per visitor)
   useEffect(() => {
     if (!articleId) return;

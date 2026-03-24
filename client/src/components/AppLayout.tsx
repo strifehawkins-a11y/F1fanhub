@@ -243,6 +243,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 bg-white mt-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+                <span className="font-racing text-white text-[9px] font-black tracking-tighter">F1</span>
+              </div>
+              <span className="font-racing text-gray-500 text-xs tracking-widest uppercase">Paddock</span>
+              <span className="text-gray-200 text-xs">·</span>
+              <span className="font-racing text-[10px] text-gray-400">© {new Date().getFullYear()} Lansanah Junior Marah</span>
+            </div>
+
+            {/* Links */}
+            <nav className="flex items-center gap-4">
+              <Link href="/contact">
+                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
+                  Contact
+                </span>
+              </Link>
+              <span className="text-gray-200 text-xs">·</span>
+              <Link href="/privacy">
+                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
+                  Privacy Policy
+                </span>
+              </Link>
+              <span className="text-gray-200 text-xs">·</span>
+              <span className="font-racing text-[10px] text-gray-400 tracking-wide uppercase">2026 F1 Season</span>
+            </nav>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -16,6 +16,8 @@ import CharacterCreatorPage from "@/pages/CharacterCreatorPage";
 import AdminPage from "@/pages/AdminPage";
 import StandingsPage from "@/pages/StandingsPage";
 import PollsPage from "@/pages/PollsPage";
+import ContactPage from "@/pages/ContactPage";
+import PrivacyPage from "@/pages/PrivacyPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
 
@@ -35,6 +37,8 @@ function AuthenticatedApp() {
         <Route path="/creator" component={CharacterCreatorPage} />
         <Route path="/polls" component={PollsPage} />
         <Route path="/admin" component={AdminPage} />
+        <Route path="/contact" component={ContactPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
