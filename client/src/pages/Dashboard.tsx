@@ -591,23 +591,48 @@ export default function Dashboard() {
             <HeroArticle article={heroArticle} />
           ) : null}
 
-          {articlesLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+          {/* General News section */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-6 bg-primary rounded-full" />
+                <div>
+                  <h2 className="font-racing text-base font-black text-gray-900 uppercase tracking-tight leading-none">General News</h2>
+                  <p className="font-racing text-[9px] text-gray-400 tracking-widest uppercase mt-0.5">Latest from the paddock</p>
+                </div>
+              </div>
+              <Link href="/articles">
+                <span className="font-racing text-[10px] text-primary hover:text-red-700 tracking-wide flex items-center gap-1 transition-colors">
+                  All Articles <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
             </div>
-          ) : gridArticles.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {gridArticles.map(article => <ArticleCard key={article.id} article={article} />)}
-            </div>
-          ) : null}
 
-          {articles && articles.length > 0 && (
-            <Link href="/articles">
-              <button className="w-full py-3 border border-gray-200 rounded-xl font-racing text-xs text-gray-400 hover:text-gray-900 hover:border-primary/30 transition-all flex items-center justify-center gap-2 bg-white">
-                View All Articles <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </Link>
-          )}
+            {articlesLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+              </div>
+            ) : gridArticles.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {gridArticles.map(article => <ArticleCard key={article.id} article={article} />)}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-gray-100 bg-white p-8 text-center">
+                <p className="font-racing text-xs text-gray-400 tracking-widest uppercase">No articles yet</p>
+              </div>
+            )}
+
+            {articles && articles.length > 4 && (
+              <Link href="/articles">
+                <button
+                  data-testid="button-view-all-articles"
+                  className="w-full mt-4 py-3 border border-gray-200 rounded-xl font-racing text-xs text-gray-400 hover:text-gray-900 hover:border-primary/30 transition-all flex items-center justify-center gap-2 bg-white"
+                >
+                  View All Articles <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Right: sidebar */}
