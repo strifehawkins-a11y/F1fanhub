@@ -255,7 +255,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
               <span className="font-racing text-gray-500 text-xs tracking-widest uppercase">Paddock</span>
               <span className="text-gray-200 text-xs">·</span>
-              <span className="font-racing text-[10px] text-gray-400">© {new Date().getFullYear()} Lansanah Junior Marah</span>
+              <span className="font-racing text-[10px] text-gray-400">© {new Date().getFullYear()} F1 Paddock</span>
             </div>
 
             {/* Links */}
