@@ -442,21 +442,47 @@ function MiniStandings({ drivers, constructors }: { drivers: DriverStanding[]; c
   );
 }
 
+const F1_GRADIENTS = [
+  "linear-gradient(135deg, #0d0005 0%, #1a0008 40%, #3d0015 70%, #2d0010 100%)",
+  "linear-gradient(135deg, #0a0010 0%, #1a0030 40%, #0d0050 70%, #050020 100%)",
+  "linear-gradient(135deg, #0d0500 0%, #1a1000 40%, #3d2500 70%, #2d1800 100%)",
+];
+
+function ArticlePlaceholder({ id, className = "" }: { id: any; className?: string }) {
+  const idx = typeof id === "number" ? id : (parseInt(String(id).replace(/\D/g, "")) || 0);
+  const gradient = F1_GRADIENTS[idx % F1_GRADIENTS.length];
+  return (
+    <div className={`w-full h-full flex items-center justify-center ${className}`} style={{ background: gradient }}>
+      <div className="text-center select-none opacity-20">
+        <div className="font-racing text-white text-4xl font-black tracking-tighter mb-1">F1</div>
+        <div className="font-racing text-white text-[10px] tracking-widest uppercase">Paddock</div>
+      </div>
+    </div>
+  );
+}
+
 function HeroArticle({ article }: { article: any }) {
   const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
   const href = article.isForum ? `/forum` : `/articles/${article.id}`;
+  const [imgFailed, setImgFailed] = useState(false);
+  const hasImg = !!article.imageUrl && !imgFailed;
   return (
     <Link href={href}>
       <div
         data-testid={`hero-article-${article.id}`}
         className="relative rounded-2xl overflow-hidden cursor-pointer group min-h-[300px] md:min-h-[360px] flex flex-col justify-end"
-        style={{
-          background: article.imageUrl
-            ? `url(${article.imageUrl}) center/cover`
-            : "linear-gradient(135deg, #1a0008 0%, #3d0015 50%, #7d0025 100%)"
-        }}
       >
+        {hasImg ? (
+          <img
+            src={article.imageUrl}
+            alt={article.title}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <ArticlePlaceholder id={article.id} className="absolute inset-0" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
         <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
         <div className="relative p-6">
@@ -483,15 +509,31 @@ function ArticleCard({ article }: { article: any }) {
   const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
   const href = article.isForum ? `/forum` : `/articles/${article.id}`;
+  const [imgFailed, setImgFailed] = useState(false);
+  const hasImg = !!article.imageUrl && !imgFailed;
   return (
     <Link href={href}>
       <div
         data-testid={`card-article-${article.id}`}
         className="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-md transition-all group h-full flex flex-col"
       >
-        <div className="h-0.5 bg-gradient-to-r from-primary to-primary/20" />
+        <div className="relative h-36 overflow-hidden flex-shrink-0">
+          {hasImg ? (
+            <img
+              src={article.imageUrl}
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={() => setImgFailed(true)}
+            />
+          ) : (
+            <ArticlePlaceholder id={article.id} className="h-full" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+          <span className="absolute bottom-2 left-3 font-racing text-[9px] font-bold tracking-[0.15em] uppercase bg-primary text-white px-2 py-0.5 rounded">
+            {category}
+          </span>
+        </div>
         <div className="p-4 flex flex-col flex-1">
-          <span className="inline-block font-racing text-[9px] font-bold tracking-[0.15em] uppercase text-primary mb-2">{category}</span>
           <h3 className="font-racing text-sm font-black text-gray-900 leading-tight line-clamp-3 mb-2 flex-1 group-hover:text-primary transition-colors">
             {article.title}
           </h3>
