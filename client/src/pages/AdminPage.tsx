@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,6 +15,15 @@ interface ArticleForm {
   tags: string;
 }
 const emptyForm: ArticleForm = { title: "", excerpt: "", content: "", imageUrl: "", tags: "" };
+
+async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("image", file);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) throw new Error("Upload failed");
+  const { url } = await res.json();
+  return url;
+}
 
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
@@ -40,6 +49,8 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ArticleForm>(emptyForm);
   const [expandedArticle, setExpandedArticle] = useState<number | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Driver edit state
   const [editingDriverId, setEditingDriverId] = useState<number | null>(null);
@@ -163,6 +174,22 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleImageFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setForm(f => ({ ...f, imageUrl: url }));
+      toast({ title: "Image uploaded!" });
+    } catch {
+      toast({ title: "Upload failed", description: "Please try again or use a URL.", variant: "destructive" });
+    } finally {
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = () => {
     if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) {
       toast({ title: "Fill in all required fields", variant: "destructive" });
@@ -256,15 +283,70 @@ export default function AdminPage() {
                   <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="Write your full article here..." rows={12} data-testid="input-article-content" className={inputCls + " resize-y font-mono"} />
                   <p className="mt-1 text-[10px] text-gray-300">Embed an image inline: <code className="bg-gray-100 px-1 rounded">![Caption text](https://image-url.jpg)</code> on its own blank-separated line</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Cover Image URL</label>
-                    <input value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." data-testid="input-article-image" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Tags (comma-separated)</label>
-                    <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="Race Report, Verstappen" data-testid="input-article-tags" className={inputCls} />
-                  </div>
+                {/* Cover Image Upload */}
+                <div>
+                  <label className={labelCls}>Cover Image</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    ref={fileInputRef}
+                    onChange={handleImageFileSelect}
+                    className="hidden"
+                    data-testid="input-article-image-file"
+                  />
+                  {form.imageUrl ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                      <img src={form.imageUrl} alt="Cover preview" className="w-full h-40 object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-white text-gray-900 font-racing text-xs font-bold rounded-lg shadow"
+                        >
+                          <Upload className="w-3.5 h-3.5" /> Replace
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, imageUrl: "" }))}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white font-racing text-xs font-bold rounded-lg shadow"
+                        >
+                          <X className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={imageUploading}
+                        data-testid="button-upload-cover-image"
+                        className="w-full flex items-center justify-center gap-2 h-28 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5 transition-all font-racing text-xs text-gray-400 hover:text-primary"
+                      >
+                        {imageUploading ? (
+                          <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />Uploading...</span>
+                        ) : (
+                          <span className="flex items-center gap-2"><Upload className="w-4 h-4" />Click to upload image</span>
+                        )}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <div className="h-px flex-1 bg-gray-100" />
+                        <span className="font-racing text-[9px] text-gray-300 tracking-widest">OR USE URL</span>
+                        <div className="h-px flex-1 bg-gray-100" />
+                      </div>
+                      <input
+                        value={form.imageUrl}
+                        onChange={e => setForm({ ...form, imageUrl: e.target.value })}
+                        placeholder="https://example.com/image.jpg"
+                        data-testid="input-article-image"
+                        className={inputCls}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>Tags (comma-separated)</label>
+                  <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="Race Report, Verstappen" data-testid="input-article-tags" className={inputCls} />
                 </div>
               </div>
               <div className="flex gap-2 pt-2">

@@ -6,6 +6,27 @@ import { insertForumPostSchema, insertForumCommentSchema, insertArticleSchema, i
 import { seedDatabase } from "./seed";
 import { setupFacebookAuth, isFacebookAuthEnabled } from "./facebookAuth";
 import { setupLocalAuth } from "./localAuth";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadsDir = path.join(process.cwd(), "public/uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await setupAuth(app);
@@ -15,6 +36,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/auth/config", (_req, res) => {
     res.json({ facebookAuthEnabled: isFacebookAuthEnabled() });
+  });
+
+  // ---- IMAGE UPLOAD ----
+  app.post("/api/upload", isAuthenticated, upload.single("image"), (req: any, res) => {
+    if (!req.file) return res.status(400).json({ message: "No image file provided or invalid file type" });
+    const url = `/uploads/${req.file.filename}`;
+    res.json({ url });
   });
 
   // ---- USER PROFILE ----

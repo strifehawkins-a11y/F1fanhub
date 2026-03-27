@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { MessageSquare, Clock, Newspaper, Eye } from "lucide-react";
+import { MessageSquare, Clock, Newspaper, Eye, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function getCategoryFromTags(tags: string[] | null): string {
@@ -20,134 +20,188 @@ function estimateReadTime(content: string) {
   return Math.max(1, Math.round(words / 200));
 }
 
+function ArticleCard({ article, featured = false }: { article: any; featured?: boolean }) {
+  const category = getCategoryFromTags(article.tags);
+  const readTime = estimateReadTime(article.content);
+
+  if (featured) {
+    return (
+      <Link href={`/articles/${article.id}`}>
+        <div
+          data-testid={`hero-article-${article.id}`}
+          className="relative rounded-2xl overflow-hidden cursor-pointer group"
+          style={{ minHeight: 400 }}
+        >
+          {article.imageUrl ? (
+            <>
+              <img
+                src={article.imageUrl}
+                alt={article.title}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+            </>
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(135deg, #0d0005 0%, #1a0008 40%, #3d0015 70%, #2d0010 100%)" }}
+            />
+          )}
+          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+
+          <div className="relative p-6 md:p-8 h-full flex flex-col justify-end" style={{ minHeight: 400 }}>
+            <span className="inline-block font-racing text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-3 py-1 rounded mb-4 w-fit">
+              {category}
+            </span>
+            <h2 className="font-racing text-2xl md:text-4xl font-black text-white leading-tight mb-3 group-hover:text-primary/90 transition-colors max-w-2xl">
+              {article.title}
+            </h2>
+            <p className="text-white/65 text-sm leading-relaxed line-clamp-2 mb-5 max-w-xl">{article.excerpt}</p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/45 text-xs">
+              <span className="font-racing font-bold text-white/60">{article.username || "F1 Paddock"}</span>
+              <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM yyyy") : ""}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{readTime} min read</span>
+              <div className="ml-auto flex items-center gap-4">
+                <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{article.viewCount || 0}</span>
+                <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{article.commentCount || 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <Link href={`/articles/${article.id}`}>
+      <div
+        data-testid={`card-article-${article.id}`}
+        className="bg-white border border-gray-100 rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-lg transition-all duration-300 group h-full flex flex-col"
+      >
+        {article.imageUrl ? (
+          <div className="relative h-44 overflow-hidden flex-shrink-0">
+            <img
+              src={article.imageUrl}
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <span className="absolute bottom-3 left-3 font-racing text-[9px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2 py-1 rounded">
+              {category}
+            </span>
+          </div>
+        ) : (
+          <div className="h-0.5 bg-gradient-to-r from-primary to-primary/20 flex-shrink-0" />
+        )}
+
+        <div className="p-4 flex flex-col flex-1">
+          {!article.imageUrl && (
+            <span className="inline-block font-racing text-[9px] font-bold tracking-[0.15em] uppercase text-primary mb-2">{category}</span>
+          )}
+          <h3 className="font-racing text-sm font-black text-gray-900 leading-tight line-clamp-3 mb-2 flex-1 group-hover:text-primary transition-colors">
+            {article.title}
+          </h3>
+          <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{article.excerpt}</p>
+
+          {article.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {article.tags.slice(0, 2).map((tag: string) => (
+                <span key={tag} className="font-racing text-[9px] bg-primary/8 border border-primary/15 text-primary/80 rounded px-1.5 py-0.5">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 text-[10px] text-gray-400 border-t border-gray-50 pt-2 mt-auto">
+            <span className="font-racing truncate flex-1 text-gray-500">{article.username || "F1 Paddock"}</span>
+            <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM") : ""}</span>
+            <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{readTime}m</span>
+            <span className="flex items-center gap-0.5" data-testid={`text-view-count-${article.id}`}>
+              <Eye className="w-2.5 h-2.5" />{article.viewCount || 0}
+            </span>
+            <span className="flex items-center gap-0.5">
+              <MessageSquare className="w-2.5 h-2.5" />{article.commentCount || 0}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function ArticlesPage() {
   const { data: articles, isLoading } = useQuery<any[]>({
     queryKey: ["/api/articles"],
   });
 
   const heroArticle = articles?.[0];
-  const gridArticles = articles?.slice(1) || [];
+  const secondArticle = articles?.[1];
+  const gridArticles = articles?.slice(2) || [];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-1 h-4 bg-primary rounded-full" />
-          <span className="font-racing text-[10px] text-primary tracking-[0.25em] uppercase font-bold">Latest News</span>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-1 h-5 bg-primary rounded-full" />
+            <span className="font-racing text-[10px] text-primary tracking-[0.25em] uppercase font-bold">Latest Coverage</span>
+          </div>
+          <h1 className="font-racing text-3xl md:text-4xl font-black text-foreground tracking-tight">Articles</h1>
         </div>
-        <h1 className="font-racing text-3xl font-black text-foreground tracking-tight">Articles</h1>
+        <span className="font-racing text-xs text-muted-foreground">{articles?.length || 0} stories</span>
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-80 w-full rounded-2xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-xl" />)}
+        <div className="space-y-6">
+          <Skeleton className="h-[400px] w-full rounded-2xl" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
           </div>
         </div>
       ) : articles?.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          <Newspaper className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p className="font-racing text-sm">No articles yet.</p>
-          <p className="text-xs mt-1">Check back soon for the latest F1 news.</p>
+        <div className="text-center py-24 text-muted-foreground">
+          <Newspaper className="w-14 h-14 mx-auto mb-4 opacity-20" />
+          <p className="font-racing text-base font-black mb-1">No articles published yet</p>
+          <p className="text-sm">Check back soon for the latest F1 news and analysis.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Hero article */}
-          {heroArticle && (
-            <Link href={`/articles/${heroArticle.id}`}>
-              <div
-                data-testid={`hero-article-${heroArticle.id}`}
-                className="relative rounded-2xl overflow-hidden cursor-pointer group min-h-[320px] flex flex-col justify-end"
-                style={{
-                  background: heroArticle.imageUrl
-                    ? `url(${heroArticle.imageUrl}) center/cover`
-                    : "linear-gradient(135deg, #0d0d14 0%, #1a0814 40%, #2d0a10 100%)"
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                <div className="relative p-6 md:p-8">
-                  <span className="inline-block font-racing text-[10px] font-bold tracking-[0.2em] uppercase bg-primary text-white px-2.5 py-1 rounded mb-3">
-                    {getCategoryFromTags(heroArticle.tags)}
-                  </span>
-                  <h2 className="font-racing text-2xl md:text-3xl font-black text-white leading-tight mb-3 group-hover:text-primary/90 transition-colors">
-                    {heroArticle.title}
-                  </h2>
-                  <p className="text-white/70 text-sm leading-relaxed line-clamp-2 mb-4">{heroArticle.excerpt}</p>
-                  <div className="flex items-center gap-4 text-white/50 text-xs">
-                    <span className="font-racing">{heroArticle.username || "F1 Paddock"}</span>
-                    <span>{heroArticle.publishedAt ? format(new Date(heroArticle.publishedAt), "d MMM yyyy") : ""}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />{estimateReadTime(heroArticle.content)} min
-                    </span>
-                    <span className="flex items-center gap-1 ml-auto">
-                      <Eye className="w-3 h-3" />{heroArticle.viewCount || 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3" />{heroArticle.commentCount || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
+        <div className="space-y-6">
+          {/* Hero + secondary split */}
+          {heroArticle && secondArticle ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
+              <ArticleCard article={heroArticle} featured />
+              <ArticleCard article={secondArticle} featured />
+            </div>
+          ) : heroArticle ? (
+            <ArticleCard article={heroArticle} featured />
+          ) : null}
+
+          {/* Divider */}
+          {gridArticles.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="w-1 h-5 bg-primary rounded-full" />
+              <span className="font-racing text-[10px] text-gray-400 tracking-widest uppercase font-bold">More Stories</span>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
           )}
 
           {/* Grid */}
           {gridArticles.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {gridArticles.map((article) => (
-                <Link key={article.id} href={`/articles/${article.id}`}>
-                  <div
-                    data-testid={`card-article-${article.id}`}
-                    className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all group h-full flex flex-col"
-                  >
-                    {article.imageUrl ? (
-                      <div className="relative h-36 overflow-hidden">
-                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                      </div>
-                    ) : (
-                      <div className="h-0.5 bg-gradient-to-r from-primary/80 to-primary/20" />
-                    )}
-                    <div className="p-4 flex flex-col flex-1">
-                      <span className="inline-block font-racing text-[9px] font-bold tracking-[0.15em] uppercase text-primary mb-2">
-                        {getCategoryFromTags(article.tags)}
-                      </span>
-                      <h3 className="font-racing text-sm font-black text-foreground leading-tight line-clamp-3 mb-2 flex-1 group-hover:text-primary transition-colors">
-                        {article.title}
-                      </h3>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 mb-3">
-                        {article.excerpt}
-                      </p>
-                      {article.tags?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {article.tags.slice(0, 2).map((tag: string) => (
-                            <span key={tag} className="font-racing text-[9px] bg-primary/5 border border-primary/20 text-primary/80 rounded px-1.5 py-0.5">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground border-t border-border/50 pt-2 mt-auto">
-                        <span className="font-racing truncate flex-1">{article.username || "F1 Paddock"}</span>
-                        <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM") : ""}</span>
-                        <span className="flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" />{estimateReadTime(article.content)}m
-                        </span>
-                        <span className="flex items-center gap-0.5" data-testid={`text-view-count-${article.id}`}>
-                          <Eye className="w-2.5 h-2.5" />{article.viewCount || 0}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <MessageSquare className="w-2.5 h-2.5" />{article.commentCount || 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                <ArticleCard key={article.id} article={article} />
               ))}
             </div>
+          )}
+
+          {articles && articles.length >= 10 && (
+            <button className="w-full py-4 border border-gray-200 rounded-xl font-racing text-xs text-gray-400 hover:text-gray-900 hover:border-primary/30 transition-all flex items-center justify-center gap-2 bg-white">
+              Load More Articles <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       )}
