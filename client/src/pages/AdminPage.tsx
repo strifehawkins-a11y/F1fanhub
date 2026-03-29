@@ -13,8 +13,9 @@ interface ArticleForm {
   content: string;
   imageUrl: string;
   tags: string;
+  section: "paddock" | "news";
 }
-const emptyForm: ArticleForm = { title: "", excerpt: "", content: "", imageUrl: "", tags: "" };
+const emptyForm: ArticleForm = { title: "", excerpt: "", content: "", imageUrl: "", tags: "", section: "news" };
 
 async function uploadImage(file: File): Promise<string> {
   const fd = new FormData();
@@ -201,6 +202,7 @@ export default function AdminPage() {
       content: form.content.trim(),
       imageUrl: form.imageUrl.trim() || null,
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      section: form.section,
       authorId: (user as any)?.id || "admin",
     };
     if (editingId) updateMutation.mutate({ id: editingId, data });
@@ -209,7 +211,7 @@ export default function AdminPage() {
 
   const handleEdit = (article: any) => {
     setEditingId(article.id);
-    setForm({ title: article.title, excerpt: article.excerpt, content: article.content, imageUrl: article.imageUrl || "", tags: (article.tags || []).join(", ") });
+    setForm({ title: article.title, excerpt: article.excerpt, content: article.content, imageUrl: article.imageUrl || "", tags: (article.tags || []).join(", "), section: article.section || "news" });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -348,6 +350,31 @@ export default function AdminPage() {
                   <label className={labelCls}>Tags (comma-separated)</label>
                   <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="Race Report, Verstappen" data-testid="input-article-tags" className={inputCls} />
                 </div>
+                <div>
+                  <label className={labelCls}>Show article in</label>
+                  <div className="flex gap-3 mt-1">
+                    <button
+                      type="button"
+                      data-testid="button-section-paddock"
+                      onClick={() => setForm(f => ({ ...f, section: "paddock" }))}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 font-racing text-xs font-bold transition-all ${form.section === "paddock" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}
+                    >
+                      <span className="text-base">🏎️</span>
+                      <span>F1 Paddock</span>
+                      <span className="font-sans font-normal text-[10px] normal-case tracking-normal opacity-60">Featured on homepage</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="button-section-news"
+                      onClick={() => setForm(f => ({ ...f, section: "news" }))}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 font-racing text-xs font-bold transition-all ${form.section === "news" ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}
+                    >
+                      <span className="text-base">📰</span>
+                      <span>General News</span>
+                      <span className="font-sans font-normal text-[10px] normal-case tracking-normal opacity-60">Articles & news list</span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-publish-article" className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-racing text-sm font-bold rounded-lg hover:bg-red-700 transition-all disabled:opacity-50">
@@ -383,8 +410,11 @@ export default function AdminPage() {
                         <button onClick={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)} className="flex items-start gap-2 w-full text-left group">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-racing text-sm font-black text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{article.title}</h3>
-                            <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                               <span className="text-[10px] text-gray-400">{article.publishedAt ? format(new Date(article.publishedAt), "d MMM yyyy") : ""}</span>
+                              <span className={`font-racing text-[9px] px-1.5 py-0.5 rounded font-bold ${article.section === "paddock" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}>
+                                {article.section === "paddock" ? "🏎️ F1 Paddock" : "📰 General News"}
+                              </span>
                               {article.tags?.slice(0, 2).map((tag: string) => (
                                 <span key={tag} className="font-racing text-[9px] bg-primary/8 text-primary rounded px-1.5 py-0.5">{tag}</span>
                               ))}

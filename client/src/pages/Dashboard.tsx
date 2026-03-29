@@ -588,13 +588,17 @@ export default function Dashboard() {
     isForum: true,
   }));
 
-  const allItems = [
-    ...(articles || []),
+  const paddockArticles = (articles || [])
+    .filter((a: any) => a.section === "paddock")
+    .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+  const newsArticles = [
+    ...(articles || []).filter((a: any) => a.section !== "paddock"),
     ...normalizedForum,
   ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-  const heroArticle = allItems[0];
-  const gridArticles = allItems.slice(1) || [];
+  const heroArticle = paddockArticles[0] || null;
+  const gridArticles = newsArticles;
 
   return (
     <div className="space-y-0">
@@ -631,7 +635,15 @@ export default function Dashboard() {
             <Skeleton className="h-80 w-full rounded-2xl" />
           ) : heroArticle ? (
             <HeroArticle article={heroArticle} />
-          ) : null}
+          ) : (
+            <div className="relative rounded-2xl overflow-hidden flex items-center justify-center min-h-[220px]" style={{ background: "linear-gradient(135deg, #0d0005 0%, #1a0008 40%, #3d0015 70%, #2d0010 100%)" }}>
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+              <div className="text-center px-6 py-10 opacity-50">
+                <div className="font-racing text-white text-4xl font-black tracking-tighter mb-2">F1</div>
+                <p className="font-racing text-white/60 text-xs tracking-widest uppercase">Set an article to "F1 Paddock" in Admin to feature it here</p>
+              </div>
+            </div>
+          )}
 
           {/* General News section */}
           <div className="pt-2">
