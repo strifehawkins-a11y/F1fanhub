@@ -392,6 +392,7 @@ export class DatabaseStorage implements IStorage {
       imageUrl: a.imageUrl,
       authorId: a.authorId,
       tags: a.tags,
+      section: a.section,
       publishedAt: a.publishedAt,
       updatedAt: a.updatedAt,
       username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : "Admin",
