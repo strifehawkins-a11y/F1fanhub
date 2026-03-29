@@ -7,20 +7,18 @@ import { seedDatabase } from "./seed";
 import { setupFacebookAuth, isFacebookAuthEnabled } from "./facebookAuth";
 import { setupLocalAuth } from "./localAuth";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { randomUUID } from "crypto";
+import { objectStorageClient } from "./replit_integrations/object_storage";
 
-const uploadsDir = path.join(process.cwd(), "public/uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+function getPublicBucketInfo() {
+  const raw = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",")[0].trim();
+  const clean = raw.startsWith("/") ? raw.slice(1) : raw;
+  const parts = clean.split("/");
+  return { bucketName: parts[0], prefix: parts.slice(1).join("/") };
+}
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -38,11 +36,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ facebookAuthEnabled: isFacebookAuthEnabled() });
   });
 
-  // ---- IMAGE UPLOAD ----
-  app.post("/api/upload", isAuthenticated, upload.single("image"), (req: any, res) => {
+  // ---- IMAGE UPLOAD (cloud storage) ----
+  app.post("/api/upload", isAuthenticated, upload.single("image"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "No image file provided or invalid file type" });
-    const url = `/uploads/${req.file.filename}`;
-    res.json({ url });
+    try {
+      const { bucketName, prefix } = getPublicBucketInfo();
+      const objectId = randomUUID();
+      const ext = req.file.mimetype === "image/png" ? ".png" : req.file.mimetype === "image/gif" ? ".gif" : req.file.mimetype === "image/webp" ? ".webp" : ".jpg";
+      const objectName = `${prefix}/images/${objectId}${ext}`;
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      await file.save(req.file.buffer, { contentType: req.file.mimetype, resumable: false });
+      res.json({ url: `/api/images/${objectId}${ext}` });
+    } catch (err) {
+      console.error("Cloud upload error:", err);
+      res.status(500).json({ message: "Failed to upload image to cloud storage" });
+    }
+  });
+
+  // ---- SERVE CLOUD IMAGES ----
+  app.get("/api/images/:objectId", async (req, res) => {
+    try {
+      const { bucketName, prefix } = getPublicBucketInfo();
+      const objectName = `${prefix}/images/${req.params.objectId}`;
+      const file = objectStorageClient.bucket(bucketName).file(objectName);
+      const [exists] = await file.exists();
+      if (!exists) return res.status(404).json({ error: "Image not found" });
+      const [metadata] = await file.getMetadata();
+      res.set("Content-Type", (metadata.contentType as string) || "image/jpeg");
+      res.set("Cache-Control", "public, max-age=31536000");
+      file.createReadStream().on("error", () => res.status(500).end()).pipe(res);
+    } catch (err) {
+      console.error("Image serve error:", err);
+      res.status(500).json({ error: "Failed to serve image" });
+    }
   });
 
   // ---- USER PROFILE ----
