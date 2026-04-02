@@ -73,6 +73,7 @@ export const articles = pgTable("articles", {
   authorId: varchar("author_id").notNull(),
   tags: text("tags").array().default(sql`ARRAY[]::text[]`),
   section: text("section").default("news").notNull(),
+  slug: text("slug").unique(),
   publishedAt: timestamp("published_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -47,7 +47,7 @@ function ArticleCard({ article, featured = false }: { article: any; featured?: b
 
   if (featured) {
     return (
-      <Link href={`/articles/${article.id}`}>
+      <Link href={`/articles/${article.slug || article.id}`}>
         <div
           data-testid={`hero-article-${article.id}`}
           className="relative rounded-2xl overflow-hidden cursor-pointer group"
@@ -90,7 +90,7 @@ function ArticleCard({ article, featured = false }: { article: any; featured?: b
   }
 
   return (
-    <Link href={`/articles/${article.id}`}>
+    <Link href={`/articles/${article.slug || article.id}`}>
       <div
         data-testid={`card-article-${article.id}`}
         className="bg-white border border-gray-100 rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-lg transition-all duration-300 group h-full flex flex-col"

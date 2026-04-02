@@ -464,7 +464,7 @@ function ArticlePlaceholder({ id, className = "" }: { id: any; className?: strin
 function HeroArticle({ article }: { article: any }) {
   const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
-  const href = article.isForum ? `/forum` : `/articles/${article.id}`;
+  const href = article.isForum ? `/forum` : `/articles/${article.slug || article.id}`;
   const [imgFailed, setImgFailed] = useState(false);
   const hasImg = !!article.imageUrl && !imgFailed;
   return (
@@ -508,7 +508,7 @@ function HeroArticle({ article }: { article: any }) {
 function ArticleCard({ article }: { article: any }) {
   const category = article.isForum ? "FORUM" : getCategoryFromTags(article.tags);
   const readTime = estimateReadTime(article.content);
-  const href = article.isForum ? `/forum` : `/articles/${article.id}`;
+  const href = article.isForum ? `/forum` : `/articles/${article.slug || article.id}`;
   const [imgFailed, setImgFailed] = useState(false);
   const hasImg = !!article.imageUrl && !imgFailed;
   return (

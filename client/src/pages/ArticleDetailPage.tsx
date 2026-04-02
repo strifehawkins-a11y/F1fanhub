@@ -36,22 +36,24 @@ function getOrCreateVisitorId(): string {
 }
 
 export default function ArticleDetailPage() {
-  const [, params] = useRoute("/articles/:id");
-  const articleId = Number(params?.id);
+  const [, params] = useRoute("/articles/:slug");
+  const slugOrId = params?.slug || "";
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
 
   const { data: article, isLoading: articleLoading } = useQuery<any>({
-    queryKey: ["/api/articles", articleId],
+    queryKey: ["/api/articles", slugOrId],
     queryFn: async () => {
-      const res = await fetch(`/api/articles/${articleId}`);
+      const res = await fetch(`/api/articles/${slugOrId}`);
       if (!res.ok) throw new Error("Article not found");
       return res.json();
     },
-    enabled: !!articleId,
+    enabled: !!slugOrId,
   });
+
+  const articleId = article?.id;
 
   const { data: comments, isLoading: commentsLoading } = useQuery<any[]>({
     queryKey: ["/api/articles", articleId, "comments"],
@@ -68,7 +70,7 @@ export default function ArticleDetailPage() {
     const siteTitle = "F1 Paddock";
     const fullTitle = `${article.title} | ${siteTitle}`;
     const description = article.excerpt || `Read ${article.title} on F1 Paddock.`;
-    const url = `${window.location.origin}/articles/${articleId}`;
+    const url = `${window.location.origin}/articles/${article.slug || articleId}`;
     const image = article.imageUrl || "";
 
     document.title = fullTitle;

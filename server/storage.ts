@@ -13,6 +13,28 @@ import {
 } from "@shared/schema";
 import { users, type User } from "@shared/models/auth";
 
+function toSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .substring(0, 80);
+}
+
+async function uniqueSlug(base: string, excludeId?: number): Promise<string> {
+  let slug = base;
+  let suffix = 0;
+  while (true) {
+    const candidate = suffix === 0 ? slug : `${slug}-${suffix}`;
+    const existing = await db.select({ id: articles.id }).from(articles)
+      .where(eq(articles.slug, candidate));
+    if (existing.length === 0 || (existing.length === 1 && existing[0].id === excludeId)) return candidate;
+    suffix++;
+  }
+}
+
 export interface IStorage {
   // User profiles
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
@@ -360,6 +382,7 @@ export class DatabaseStorage implements IStorage {
         authorId: articles.authorId,
         tags: articles.tags,
         section: articles.section,
+        slug: articles.slug,
         publishedAt: articles.publishedAt,
         updatedAt: articles.updatedAt,
         firstName: users.firstName,
@@ -393,6 +416,7 @@ export class DatabaseStorage implements IStorage {
       authorId: a.authorId,
       tags: a.tags,
       section: a.section,
+      slug: a.slug,
       publishedAt: a.publishedAt,
       updatedAt: a.updatedAt,
       username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : "Admin",
@@ -413,6 +437,7 @@ export class DatabaseStorage implements IStorage {
         authorId: articles.authorId,
         tags: articles.tags,
         section: articles.section,
+        slug: articles.slug,
         publishedAt: articles.publishedAt,
         updatedAt: articles.updatedAt,
         firstName: users.firstName,
@@ -446,13 +471,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticle(article: InsertArticle): Promise<Article> {
-    const [result] = await db.insert(articles).values(article).returning();
+    const slug = await uniqueSlug(toSlug(article.title));
+    const [result] = await db.insert(articles).values({ ...article, slug }).returning();
     return result;
   }
 
   async updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined> {
-    const [result] = await db.update(articles).set({ ...article, updatedAt: new Date() }).where(eq(articles.id, id)).returning();
+    const updates: any = { ...article, updatedAt: new Date() };
+    if (article.title) {
+      updates.slug = await uniqueSlug(toSlug(article.title), id);
+    }
+    const [result] = await db.update(articles).set(updates).where(eq(articles.id, id)).returning();
     return result;
+  }
+
+  async getArticleBySlug(slug: string) {
+    const [result] = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        content: articles.content,
+        excerpt: articles.excerpt,
+        imageUrl: articles.imageUrl,
+        authorId: articles.authorId,
+        tags: articles.tags,
+        section: articles.section,
+        slug: articles.slug,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .where(eq(articles.slug, slug));
+
+    if (!result) return undefined;
+
+    const [viewResult] = await db
+      .select({ count: sql<number>`count(distinct visitor_id)` })
+      .from(articleViews)
+      .where(eq(articleViews.articleId, result.id));
+
+    const [commentResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(articleComments)
+      .where(eq(articleComments.articleId, result.id));
+
+    return {
+      ...result,
+      username: result.firstName ? `${result.firstName} ${result.lastName || ""}`.trim() : "Admin",
+      viewCount: Number(viewResult?.count || 0),
+      commentCount: Number(commentResult?.count || 0),
+    };
   }
 
   async deleteArticle(id: number): Promise<boolean> {

@@ -233,9 +233,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/articles/:id", async (req, res) => {
+  app.get("/api/articles/:idOrSlug", async (req, res) => {
     try {
-      const article = await storage.getArticleById(Number(req.params.id));
+      const param = req.params.idOrSlug;
+      const isNumeric = /^\d+$/.test(param);
+      const article = isNumeric
+        ? await storage.getArticleById(Number(param))
+        : await storage.getArticleBySlug(param);
       if (!article) return res.status(404).json({ message: "Article not found" });
       res.json(article);
     } catch (err) {
