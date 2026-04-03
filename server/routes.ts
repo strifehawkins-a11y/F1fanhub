@@ -37,6 +37,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/google839aabed702b84d7.html", (_req, res) => {
     res.type("text/html").send("google-site-verification: google839aabed702b84d7.html");
   });
+  app.get("/google8d169d83e8d41613.html", (_req, res) => {
+    res.type("text/html").send("google-site-verification: google8d169d83e8d41613.html");
+  });
 
   // ---- ROBOTS.TXT ----
   app.get("/robots.txt", (req, res) => {
