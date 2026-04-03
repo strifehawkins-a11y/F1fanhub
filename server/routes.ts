@@ -33,6 +33,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   setupLocalAuth(app);
   setupFacebookAuth(app);
 
+  // ---- GOOGLE SEARCH CONSOLE VERIFICATION ----
+  app.get("/google839aabed702b84d7.html", (_req, res) => {
+    res.type("text/html").send("google-site-verification: google839aabed702b84d7.html");
+  });
+
   // ---- ROBOTS.TXT ----
   app.get("/robots.txt", (req, res) => {
     const siteUrl = `https://${req.hostname}`;
