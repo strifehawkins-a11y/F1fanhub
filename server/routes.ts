@@ -37,7 +37,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/robots.txt", (req, res) => {
     const siteUrl = `https://${req.hostname}`;
     res.type("text/plain").send(
-      `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
+      `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml\nSitemap: ${siteUrl}/rss.xml\n`
     );
   });
 
@@ -73,6 +73,60 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${articleEntries}</urlset>`;
     res.type("application/xml").send(xml);
+  });
+
+  // ---- RSS FEED ----
+  app.get("/rss.xml", async (req, res) => {
+    const siteUrl = `https://${req.hostname}`;
+    const escape = (s: string) =>
+      (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+    let items = "";
+    try {
+      const articles = await storage.getArticles();
+      for (const a of articles) {
+        const slug = (a as any).slug || a.id;
+        const link = `${siteUrl}/articles/${slug}`;
+        const pubDate = a.publishedAt ? new Date(a.publishedAt).toUTCString() : new Date().toUTCString();
+        const tags = Array.isArray((a as any).tags) ? (a as any).tags : [];
+        const categories = tags.map((t: string) => `        <category>${escape(t)}</category>`).join("\n");
+        const image = a.imageUrl ? `        <enclosure url="${siteUrl}${a.imageUrl}" type="image/jpeg" length="0" />\n` : "";
+        items += `    <item>
+      <title>${escape(a.title)}</title>
+      <link>${link}</link>
+      <guid isPermaLink="true">${link}</guid>
+      <description>${escape(a.excerpt || "")}</description>
+      <pubDate>${pubDate}</pubDate>
+      <author>noreply@f1paddock.replit.app (${escape((a as any).username || "F1 Paddock")})</author>
+${categories}
+${image}    </item>\n`;
+      }
+    } catch {}
+
+    const buildDate = new Date().toUTCString();
+    const feed = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>F1 Paddock – Formula 1 News &amp; Race Reports</title>
+    <link>${siteUrl}</link>
+    <description>The latest Formula 1 news, race reports, paddock updates, and driver standings from F1 Paddock.</description>
+    <language>en-gb</language>
+    <ttl>60</ttl>
+    <lastBuildDate>${buildDate}</lastBuildDate>
+    <managingEditor>strifehawkins@gmail.com (Lansanah Junior Marah)</managingEditor>
+    <webMaster>strifehawkins@gmail.com (Lansanah Junior Marah)</webMaster>
+    <copyright>© ${new Date().getFullYear()} F1 Paddock</copyright>
+    <image>
+      <url>${siteUrl}/favicon.ico</url>
+      <title>F1 Paddock</title>
+      <link>${siteUrl}</link>
+    </image>
+    <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml" />
+${items}  </channel>
+</rss>`;
+
+    res.set("Cache-Control", "public, max-age=3600");
+    res.type("application/rss+xml; charset=utf-8").send(feed);
   });
 
   app.get("/api/auth/config", (_req, res) => {
