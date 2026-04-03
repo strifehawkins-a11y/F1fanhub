@@ -197,6 +197,9 @@ export default function ArticleDetailPage() {
               data-testid="img-article-cover"
               className="absolute inset-0 w-full h-full object-cover"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />

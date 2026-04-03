@@ -9,6 +9,7 @@ import { setupLocalAuth } from "./localAuth";
 import multer from "multer";
 import { randomUUID } from "crypto";
 import { objectStorageClient } from "./replit_integrations/object_storage";
+import sharp from "sharp";
 
 function getPublicBucketInfo() {
   const raw = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",")[0].trim();
@@ -96,7 +97,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ---- SERVE CLOUD IMAGES ----
+  // ---- SERVE CLOUD IMAGES (with WebP conversion + resizing) ----
   app.get("/api/images/:objectId", async (req, res) => {
     try {
       const { bucketName, prefix } = getPublicBucketInfo();
@@ -104,10 +105,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const file = objectStorageClient.bucket(bucketName).file(objectName);
       const [exists] = await file.exists();
       if (!exists) return res.status(404).json({ error: "Image not found" });
-      const [metadata] = await file.getMetadata();
-      res.set("Content-Type", (metadata.contentType as string) || "image/jpeg");
-      res.set("Cache-Control", "public, max-age=31536000");
-      file.createReadStream().on("error", () => res.status(500).end()).pipe(res);
+
+      const acceptsWebP = (req.headers.accept || "").includes("image/webp");
+      const width = req.query.w ? parseInt(req.query.w as string, 10) : undefined;
+      const quality = req.query.q ? parseInt(req.query.q as string, 10) : 80;
+      const needsProcessing = acceptsWebP || !!width;
+
+      res.set("Cache-Control", "public, max-age=31536000, immutable");
+      res.set("Vary", "Accept");
+
+      if (needsProcessing) {
+        const chunks: Buffer[] = [];
+        const stream = file.createReadStream();
+        stream.on("error", () => res.status(500).end());
+        stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+        stream.on("end", async () => {
+          try {
+            let pipeline = sharp(Buffer.concat(chunks));
+            if (width) pipeline = pipeline.resize(width, undefined, { withoutEnlargement: true });
+            if (acceptsWebP) {
+              res.set("Content-Type", "image/webp");
+              const out = await pipeline.webp({ quality }).toBuffer();
+              res.send(out);
+            } else {
+              res.set("Content-Type", "image/jpeg");
+              const out = await pipeline.jpeg({ quality }).toBuffer();
+              res.send(out);
+            }
+          } catch {
+            res.status(500).end();
+          }
+        });
+      } else {
+        const [metadata] = await file.getMetadata();
+        res.set("Content-Type", (metadata.contentType as string) || "image/jpeg");
+        file.createReadStream().on("error", () => res.status(500).end()).pipe(res);
+      }
     } catch (err) {
       console.error("Image serve error:", err);
       res.status(500).json({ error: "Failed to serve image" });

@@ -46,6 +46,7 @@ function VideoBanner() {
         autoPlay
         muted
         playsInline
+        preload="none"
         onEnded={handleEnded}
         className="w-full object-cover"
         style={{ maxHeight: 320 }}
@@ -479,6 +480,9 @@ function HeroArticle({ article }: { article: any }) {
             alt={article.title}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             onError={() => setImgFailed(true)}
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
           />
         ) : (
           <ArticlePlaceholder id={article.id} className="absolute inset-0" />
@@ -524,6 +528,8 @@ function ArticleCard({ article }: { article: any }) {
               alt={article.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               onError={() => setImgFailed(true)}
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <ArticlePlaceholder id={article.id} className="h-full" />
