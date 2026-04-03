@@ -259,7 +259,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             {/* Links */}
-            <nav className="flex items-center gap-4">
+            <nav className="flex items-center gap-4 flex-wrap">
+              <Link href="/about">
+                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
+                  About
+                </span>
+              </Link>
+              <span className="text-gray-200 text-xs">·</span>
               <Link href="/contact">
                 <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
                   Contact

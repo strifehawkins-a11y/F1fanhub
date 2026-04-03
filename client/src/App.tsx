@@ -20,6 +20,7 @@ import StandingsPage from "@/pages/StandingsPage";
 import PollsPage from "@/pages/PollsPage";
 import ContactPage from "@/pages/ContactPage";
 import PrivacyPage from "@/pages/PrivacyPage";
+import AboutPage from "@/pages/AboutPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
 
@@ -46,6 +47,7 @@ function AuthenticatedApp() {
         <Route path="/creator" component={CharacterCreatorPage} />
         <Route path="/polls" component={PollsPage} />
         <Route path="/admin" component={AdminPage} />
+        <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route component={NotFound} />

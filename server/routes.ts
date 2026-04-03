@@ -32,6 +32,48 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   setupLocalAuth(app);
   setupFacebookAuth(app);
 
+  // ---- ROBOTS.TXT ----
+  app.get("/robots.txt", (req, res) => {
+    const siteUrl = `https://${req.hostname}`;
+    res.type("text/plain").send(
+      `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
+    );
+  });
+
+  // ---- SITEMAP.XML ----
+  app.get("/sitemap.xml", async (req, res) => {
+    const siteUrl = `https://${req.hostname}`;
+    const today = new Date().toISOString().split("T")[0];
+
+    const staticPages = [
+      { url: "/", priority: "1.0", changefreq: "daily" },
+      { url: "/articles", priority: "0.9", changefreq: "daily" },
+      { url: "/standings", priority: "0.8", changefreq: "weekly" },
+      { url: "/forum", priority: "0.8", changefreq: "daily" },
+      { url: "/polls", priority: "0.7", changefreq: "weekly" },
+      { url: "/about", priority: "0.7", changefreq: "monthly" },
+      { url: "/privacy", priority: "0.5", changefreq: "monthly" },
+      { url: "/contact", priority: "0.5", changefreq: "monthly" },
+    ];
+
+    let articleEntries = "";
+    try {
+      const articles = await storage.getArticles();
+      for (const a of articles) {
+        const slug = (a as any).slug || a.id;
+        const lastmod = a.updatedAt ? new Date(a.updatedAt).toISOString().split("T")[0] : today;
+        articleEntries += `  <url>\n    <loc>${siteUrl}/articles/${slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+      }
+    } catch {}
+
+    const staticEntries = staticPages.map(p =>
+      `  <url>\n    <loc>${siteUrl}${p.url}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`
+    ).join("\n");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${articleEntries}</urlset>`;
+    res.type("application/xml").send(xml);
+  });
+
   app.get("/api/auth/config", (_req, res) => {
     res.json({ facebookAuthEnabled: isFacebookAuthEnabled() });
   });
