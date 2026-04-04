@@ -68,8 +68,12 @@ export interface IStorage {
 
   // Articles
   getArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null; commentCount: number; viewCount: number }>>;
+  getPendingArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null }>>;
   getArticleById(id: number): Promise<(Article & { username: string | null; profileImageUrl: string | null; viewCount: number }) | undefined>;
   createArticle(article: InsertArticle): Promise<Article>;
+  submitArticle(article: InsertArticle): Promise<Article>;
+  approveArticle(id: number): Promise<Article | undefined>;
+  rejectArticle(id: number): Promise<boolean>;
   updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined>;
   deleteArticle(id: number): Promise<boolean>;
   getArticleComments(articleId: number): Promise<Array<ArticleComment & { username: string | null; profileImageUrl: string | null }>>;
@@ -383,6 +387,7 @@ export class DatabaseStorage implements IStorage {
         tags: articles.tags,
         section: articles.section,
         slug: articles.slug,
+        status: articles.status,
         publishedAt: articles.publishedAt,
         updatedAt: articles.updatedAt,
         firstName: users.firstName,
@@ -391,6 +396,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(articles)
       .leftJoin(users, eq(articles.authorId, users.id))
+      .where(eq(articles.status, "published"))
       .orderBy(desc(articles.publishedAt));
 
     const [commentCounts, viewCounts] = await Promise.all([
@@ -417,12 +423,55 @@ export class DatabaseStorage implements IStorage {
       tags: a.tags,
       section: a.section,
       slug: a.slug,
+      status: a.status,
       publishedAt: a.publishedAt,
       updatedAt: a.updatedAt,
       username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : "Admin",
       profileImageUrl: a.profileImageUrl,
       commentCount: commentMap.get(a.id) || 0,
       viewCount: viewMap.get(a.id) || 0,
+    }));
+  }
+
+  async getPendingArticles() {
+    const results = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        content: articles.content,
+        excerpt: articles.excerpt,
+        imageUrl: articles.imageUrl,
+        authorId: articles.authorId,
+        tags: articles.tags,
+        section: articles.section,
+        slug: articles.slug,
+        status: articles.status,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(articles)
+      .leftJoin(users, eq(articles.authorId, users.id))
+      .where(eq(articles.status, "pending"))
+      .orderBy(desc(articles.publishedAt));
+
+    return results.map((a) => ({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      excerpt: a.excerpt,
+      imageUrl: a.imageUrl,
+      authorId: a.authorId,
+      tags: a.tags,
+      section: a.section,
+      slug: a.slug,
+      status: a.status,
+      publishedAt: a.publishedAt,
+      updatedAt: a.updatedAt,
+      username: a.firstName ? `${a.firstName} ${a.lastName || ""}`.trim() : null,
+      profileImageUrl: a.profileImageUrl,
     }));
   }
 
@@ -472,8 +521,31 @@ export class DatabaseStorage implements IStorage {
 
   async createArticle(article: InsertArticle): Promise<Article> {
     const slug = await uniqueSlug(toSlug(article.title));
-    const [result] = await db.insert(articles).values({ ...article, slug }).returning();
+    const [result] = await db.insert(articles).values({ ...article, slug, status: "published" }).returning();
     return result;
+  }
+
+  async submitArticle(article: InsertArticle): Promise<Article> {
+    const slug = await uniqueSlug(toSlug(article.title));
+    const [result] = await db.insert(articles).values({ ...article, slug, status: "pending", section: "news" }).returning();
+    return result;
+  }
+
+  async approveArticle(id: number): Promise<Article | undefined> {
+    const [result] = await db
+      .update(articles)
+      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+      .where(eq(articles.id, id))
+      .returning();
+    return result;
+  }
+
+  async rejectArticle(id: number): Promise<boolean> {
+    const result = await db
+      .update(articles)
+      .set({ status: "rejected", updatedAt: new Date() })
+      .where(eq(articles.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined> {

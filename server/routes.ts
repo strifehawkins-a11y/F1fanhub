@@ -380,6 +380,56 @@ ${items}  </channel>
     }
   });
 
+  app.get("/api/articles/pending", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const pending = await storage.getPendingArticles();
+      res.json(pending);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch pending articles" });
+    }
+  });
+
+  app.post("/api/articles/submit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const parsed = insertArticleSchema.safeParse({ ...req.body, authorId: userId });
+      if (!parsed.success) return res.status(400).json({ message: "Invalid article data", errors: parsed.error.errors });
+      const article = await storage.submitArticle(parsed.data);
+      res.json(article);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to submit article" });
+    }
+  });
+
+  app.patch("/api/articles/:id/approve", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const article = await storage.approveArticle(Number(req.params.id));
+      if (!article) return res.status(404).json({ message: "Article not found" });
+      res.json(article);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to approve article" });
+    }
+  });
+
+  app.patch("/api/articles/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const ok = await storage.rejectArticle(Number(req.params.id));
+      if (!ok) return res.status(404).json({ message: "Article not found" });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to reject article" });
+    }
+  });
+
   app.get("/api/articles/:idOrSlug", async (req, res) => {
     try {
       const param = req.params.idOrSlug;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3 } from "lucide-react";
+import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3, PenLine } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
@@ -108,6 +108,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
                     </div>
                   )}
+                  {/* Submit Story button */}
+                  <Link href="/submit-story">
+                    <button
+                      data-testid="button-submit-story"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide bg-primary text-white hover:bg-red-700 transition-all shadow-sm shadow-primary/20"
+                    >
+                      <PenLine className="w-3.5 h-3.5" />
+                      Submit Story
+                    </button>
+                  </Link>
                   {/* Avatar */}
                   <Link href="/leaderboard">
                     <Avatar
@@ -198,14 +208,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Link>
               )}
               {user ? (
-                <button
-                  data-testid="button-logout-mobile"
-                  onClick={handleLogout}
-                  className="w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide text-red-500 hover:bg-red-50 transition-all col-span-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
+                <>
+                  <Link href="/submit-story">
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      data-testid="button-submit-story-mobile"
+                      className="w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide text-primary bg-primary/8 hover:bg-primary/15 transition-all"
+                    >
+                      <PenLine className="w-4 h-4" />
+                      Submit
+                    </button>
+                  </Link>
+                  <button
+                    data-testid="button-logout-mobile"
+                    onClick={handleLogout}
+                    className="w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide text-red-500 hover:bg-red-50 transition-all"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </>
               ) : (
                 <Link href="/login">
                   <button

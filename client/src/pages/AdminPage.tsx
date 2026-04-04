@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,7 +29,7 @@ async function uploadImage(file: File): Promise<string> {
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
 
-type Tab = "articles" | "standings" | "races" | "polls";
+type Tab = "articles" | "standings" | "races" | "polls" | "submissions";
 
 interface PollForm {
   question: string;
@@ -75,6 +75,7 @@ export default function AdminPage() {
 
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const { data: articles, isLoading } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const { data: pendingArticles } = useQuery<any[]>({ queryKey: ["/api/articles/pending"], enabled: !!profile?.isAdmin });
   const { data: pollsData } = useQuery<any[]>({ queryKey: ["/api/polls"] });
   const { data: drivers } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
   const { data: constructors } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
@@ -97,6 +98,23 @@ export default function AdminPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/articles/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/articles"] }); toast({ title: "Article deleted" }); },
+  });
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/approve`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+      toast({ title: "Story approved and published!" });
+    },
+    onError: () => toast({ title: "Error approving story", variant: "destructive" }),
+  });
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/reject`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+      toast({ title: "Story rejected." });
+    },
+    onError: () => toast({ title: "Error rejecting story", variant: "destructive" }),
   });
 
   // Driver mutation
@@ -260,8 +278,10 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
+  const pendingCount = pendingArticles?.length ?? 0;
+  const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "articles", label: "Articles", icon: Newspaper },
+    { key: "submissions", label: "Submissions", icon: Inbox, badge: pendingCount },
     { key: "polls", label: "Polls", icon: BarChart3 },
     { key: "standings", label: "Standings", icon: BarChart2 },
     { key: "races", label: "Races", icon: Calendar },
@@ -279,17 +299,23 @@ export default function AdminPage() {
       </div>
 
       {/* Tab switcher */}
-      <div className="flex bg-gray-100 rounded-xl p-1 w-fit gap-1">
-        {tabs.map(({ key, label, icon: Icon }) => (
+      <div className="flex flex-wrap bg-gray-100 rounded-xl p-1 w-fit gap-1">
+        {tabs.map(({ key, label, icon: Icon, badge }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
+            data-testid={`tab-${key}`}
             className={`flex items-center gap-2 px-5 py-2 rounded-lg font-racing text-sm font-bold transition-all ${
               tab === key ? "bg-primary text-white shadow-sm shadow-primary/20" : "text-gray-400 hover:text-gray-700"
             }`}
           >
             <Icon className="w-4 h-4" />
             {label}
+            {badge != null && badge > 0 && (
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${tab === key ? "bg-white text-primary" : "bg-primary text-white"}`}>
+                {badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -790,7 +816,102 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── RACES TAB ── */}
+      {/* ── SUBMISSIONS TAB ── */}
+      {tab === "submissions" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-racing text-lg font-bold text-gray-900">Community Story Submissions</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Review and approve reader-submitted stories before they appear in Articles.</p>
+            </div>
+            {pendingCount > 0 && (
+              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-racing text-xs font-bold">
+                {pendingCount} pending
+              </span>
+            )}
+          </div>
+
+          {!pendingArticles || pendingArticles.length === 0 ? (
+            <div className="bg-white border border-gray-100 rounded-2xl p-12 text-center">
+              <Inbox className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+              <p className="font-racing text-sm text-gray-400">No pending submissions</p>
+              <p className="text-xs text-gray-300 mt-1">When readers submit stories, they'll appear here for review.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingArticles.map((article: any) => (
+                <div key={article.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-racing text-base font-bold text-gray-900 truncate" data-testid={`text-pending-title-${article.id}`}>
+                          {article.title}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="font-racing text-[10px] text-gray-400">
+                            By {article.username || "Anonymous"}
+                          </span>
+                          <span className="text-gray-200">·</span>
+                          <span className="font-racing text-[10px] text-gray-400">
+                            {format(new Date(article.publishedAt), "dd MMM yyyy, HH:mm")}
+                          </span>
+                          {article.tags?.length > 0 && (
+                            <>
+                              <span className="text-gray-200">·</span>
+                              <div className="flex gap-1">
+                                {article.tags.slice(0, 3).map((tag: string) => (
+                                  <span key={tag} className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-racing text-[9px]">{tag}</span>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span className="flex-shrink-0 px-2 py-1 rounded-full bg-amber-50 text-amber-600 font-racing text-[10px] font-bold">Pending</span>
+                    </div>
+
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-4">{article.excerpt}</p>
+
+                    {/* Content preview */}
+                    <details className="group mb-4">
+                      <summary className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer hover:text-primary transition-colors font-racing tracking-wide">
+                        <Eye className="w-3.5 h-3.5" />
+                        Preview Full Story
+                      </summary>
+                      <div className="mt-3 p-4 bg-gray-50 rounded-xl text-sm text-gray-600 whitespace-pre-line max-h-64 overflow-y-auto border border-gray-100">
+                        {article.content}
+                      </div>
+                    </details>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                      <button
+                        onClick={() => approveMutation.mutate(article.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        data-testid={`button-approve-${article.id}`}
+                        className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white font-racing text-sm font-bold hover:bg-green-700 disabled:opacity-50 transition-all shadow-sm"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve & Publish
+                      </button>
+                      <button
+                        onClick={() => rejectMutation.mutate(article.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        data-testid={`button-reject-${article.id}`}
+                        className="flex items-center gap-2 px-5 py-2 rounded-lg border border-gray-200 text-gray-500 font-racing text-sm font-bold hover:border-red-300 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-all"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === "races" && (
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">

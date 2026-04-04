@@ -21,6 +21,7 @@ import PollsPage from "@/pages/PollsPage";
 import ContactPage from "@/pages/ContactPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import AboutPage from "@/pages/AboutPage";
+import SubmitStoryPage from "@/pages/SubmitStoryPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
 
@@ -50,6 +51,7 @@ function AuthenticatedApp() {
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/submit-story" component={SubmitStoryPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
