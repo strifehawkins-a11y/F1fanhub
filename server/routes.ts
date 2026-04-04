@@ -59,13 +59,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       { url: "/articles", priority: "0.9", changefreq: "daily" },
       { url: "/standings", priority: "0.8", changefreq: "weekly" },
       { url: "/forum", priority: "0.8", changefreq: "daily" },
+      { url: "/quiz", priority: "0.7", changefreq: "monthly" },
       { url: "/polls", priority: "0.7", changefreq: "weekly" },
+      { url: "/leaderboard", priority: "0.6", changefreq: "daily" },
+      { url: "/novel", priority: "0.6", changefreq: "monthly" },
       { url: "/about", priority: "0.7", changefreq: "monthly" },
-      { url: "/privacy", priority: "0.5", changefreq: "monthly" },
       { url: "/contact", priority: "0.5", changefreq: "monthly" },
+      { url: "/privacy", priority: "0.5", changefreq: "monthly" },
     ];
 
     let articleEntries = "";
+    let forumEntries = "";
     try {
       const articles = await storage.getArticles();
       for (const a of articles) {
@@ -74,12 +78,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         articleEntries += `  <url>\n    <loc>${siteUrl}/articles/${slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
       }
     } catch {}
+    try {
+      const races = await storage.getAllRaces();
+      for (const r of races) {
+        forumEntries += `  <url>\n    <loc>${siteUrl}/forum/${r.id}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.6</priority>\n  </url>\n`;
+      }
+    } catch {}
 
     const staticEntries = staticPages.map(p =>
       `  <url>\n    <loc>${siteUrl}${p.url}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`
     ).join("\n");
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${articleEntries}</urlset>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${articleEntries}${forumEntries}</urlset>`;
     res.type("application/xml").send(xml);
   });
 
