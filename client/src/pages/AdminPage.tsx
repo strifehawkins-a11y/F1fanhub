@@ -51,7 +51,10 @@ export default function AdminPage() {
   const [form, setForm] = useState<ArticleForm>(emptyForm);
   const [expandedArticle, setExpandedArticle] = useState<number | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [inlineImageUploading, setInlineImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inlineImageInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Driver edit state
   const [editingDriverId, setEditingDriverId] = useState<number | null>(null);
@@ -191,6 +194,37 @@ export default function AdminPage() {
     }
   };
 
+  const handleInlineImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInlineImageUploading(true);
+    try {
+      const url = await uploadImage(file);
+      const textarea = contentTextareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart ?? textarea.value.length;
+        const end = textarea.selectionEnd ?? textarea.value.length;
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        const insertion = `\n\n![](${url})\n\n`;
+        const newContent = before + insertion + after;
+        setForm(f => ({ ...f, content: newContent }));
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
+          textarea.focus();
+        }, 0);
+      } else {
+        setForm(f => ({ ...f, content: f.content + `\n\n![](${url})\n\n` }));
+      }
+      toast({ title: "Image inserted into content!" });
+    } catch {
+      toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setInlineImageUploading(false);
+      if (inlineImageInputRef.current) inlineImageInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = () => {
     if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) {
       toast({ title: "Fill in all required fields", variant: "destructive" });
@@ -282,8 +316,41 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className={labelCls}>Full Content * <span className="normal-case tracking-normal text-gray-300">(blank line = new paragraph)</span></label>
-                  <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="Write your full article here..." rows={12} data-testid="input-article-content" className={inputCls + " resize-y font-mono"} />
-                  <p className="mt-1 text-[10px] text-gray-300">Embed an image inline: <code className="bg-gray-100 px-1 rounded">![Caption text](https://image-url.jpg)</code> on its own blank-separated line</p>
+                  {/* Inline image upload */}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    ref={inlineImageInputRef}
+                    onChange={handleInlineImageUpload}
+                    className="hidden"
+                    data-testid="input-inline-image-file"
+                  />
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <button
+                      type="button"
+                      onClick={() => inlineImageInputRef.current?.click()}
+                      disabled={inlineImageUploading}
+                      data-testid="button-insert-inline-image"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5 transition-all font-racing text-[10px] text-gray-500 hover:text-primary disabled:opacity-50"
+                    >
+                      {inlineImageUploading ? (
+                        <><span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />Uploading...</>
+                      ) : (
+                        <><ImageIcon className="w-3.5 h-3.5" />Insert Image</>
+                      )}
+                    </button>
+                    <span className="text-[10px] text-gray-300">Inserts at cursor position</span>
+                  </div>
+                  <textarea
+                    ref={contentTextareaRef}
+                    value={form.content}
+                    onChange={e => setForm({ ...form, content: e.target.value })}
+                    placeholder="Write your full article here..."
+                    rows={12}
+                    data-testid="input-article-content"
+                    className={inputCls + " resize-y font-mono"}
+                  />
+                  <p className="mt-1 text-[10px] text-gray-300">Add a caption: <code className="bg-gray-100 px-1 rounded">![Caption text](/api/images/...)</code></p>
                 </div>
                 {/* Cover Image Upload */}
                 <div>
