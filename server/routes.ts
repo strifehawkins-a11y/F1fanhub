@@ -299,6 +299,7 @@ ${items}  </channel>
   // ---- FORUM ----
   app.get("/api/forum/posts", async (_req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const posts = await storage.getAllForumPosts();
       res.json(posts);
     } catch (err) {
@@ -308,6 +309,7 @@ ${items}  </channel>
 
   app.get("/api/forum/race/:raceId", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const posts = await storage.getForumPostsByRace(Number(req.params.raceId));
       res.json(posts);
     } catch (err) {
@@ -351,6 +353,7 @@ ${items}  </channel>
 
   app.get("/api/forum/posts/:id/comments", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const comments = await storage.getForumComments(Number(req.params.id));
       res.json(comments);
     } catch (err) {
