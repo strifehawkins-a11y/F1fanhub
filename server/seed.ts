@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings, localCredentials, polls } from "@shared/schema";
-import { sql, eq } from "drizzle-orm";
+import { races, quizQuestions, articles, userProfile, driverStandings, constructorStandings, localCredentials, polls, forumPosts } from "@shared/schema";
+import { sql, eq, isNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { authStorage } from "./replit_integrations/auth/storage";
 
@@ -235,6 +235,69 @@ export async function seedDatabase() {
       },
     ]);
     console.log("Polls seeded.");
+  }
+
+  // Seed general forum topics
+  const existingGeneralPosts = await db.select().from(forumPosts).where(isNull(forumPosts.raceId)).limit(1);
+  if (existingGeneralPosts.length === 0) {
+    const seedUserId = "seed-admin";
+    await db.insert(forumPosts).values([
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "General Honda F1 Topic",
+        content: "Welcome to the general Honda F1 discussion thread! Use this ongoing thread to discuss anything related to Honda's involvement in Formula 1 — past, present, and future. From their Red Bull partnership to the new 2026 power unit regulations and beyond.",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "F1 Fantasy League 2026",
+        content: "This is the place to share your Fantasy F1 teams for the 2026 season! Post your picks, discuss strategies, swap tips, and track your points as the season unfolds. Who has the boldest team selection? Who will be the champion of our fantasy league?",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "2026 Drama: Alleged engine loophole",
+        content: "There's been a lot of talk about an alleged loophole in the 2026 engine regulations that some teams may be exploiting. The FIA is reportedly investigating. What do you think — is it a genuine technical innovation or a grey area that should be closed? Let's discuss the details here.",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "2026 Regulations - Critique thread",
+        content: "The 2026 regulations represent the biggest overhaul in years — new power units, new aero, new weight limits. But are they the right changes? This thread is for constructive critique of the 2026 rules. What do you think the FIA got right, and what could have been done better?",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "Possible solutions to improve the 2026 Engine Regulations",
+        content: "Following on from the critique thread — if you could rewrite parts of the 2026 engine regulations, what would you change? This thread is for constructive ideas and technical discussion. The floor is yours: how could the power unit rules be improved to produce better racing?",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "All kinds of news about F1",
+        content: "A catch-all thread for general F1 news that doesn't fit neatly into another topic. Rumours, transfers, team updates, driver contract news, technical stories — post it all here! Links to articles and breaking news welcome.",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "Random 2026 Predictions",
+        content: "End of season predictions, one-off bet predictions, wild cards — this is the thread for all your 2026 F1 crystal ball moments. Who will win the championship? Which surprise team will punch above their weight? Which driver will have a breakout season? Post your predictions here and we'll revisit them at Abu Dhabi!",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "Is Aston Martin BAR all over again?",
+        content: "Aston Martin have invested heavily in infrastructure — a stunning new factory, top engineering talent, and massive funding from Lawrence Stroll. But early 2026 results have been underwhelming. Are we witnessing the slow build of a future champion, or is this another case of big promises and disappointing results? Discuss.",
+      },
+      {
+        raceId: null,
+        userId: seedUserId,
+        title: "2026 Technical Developments — what's caught your eye?",
+        content: "A dedicated thread for spotting and discussing technical innovations on the 2026 cars. Floor designs, sidepod concepts, front wing variations, diffuser details — share your observations and analyses here. Photos and links welcome. Let's nerd out on the engineering!",
+      },
+    ]);
+    console.log("General forum topics seeded.");
   }
 
   console.log("Database seeding complete.");

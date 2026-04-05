@@ -317,6 +317,16 @@ ${items}  </channel>
     }
   });
 
+  app.get("/api/forum/general", async (_req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const posts = await storage.getGeneralForumPosts();
+      res.json(posts);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch general forum posts" });
+    }
+  });
+
   app.post("/api/forum/posts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

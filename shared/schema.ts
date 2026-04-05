@@ -49,7 +49,7 @@ export const quizAttempts = pgTable("quiz_attempts", {
 
 export const forumPosts = pgTable("forum_posts", {
   id: serial("id").primaryKey(),
-  raceId: integer("race_id").notNull(),
+  raceId: integer("race_id"),
   userId: varchar("user_id").notNull(),
   title: text("title").notNull(),
   content: text("content").notNull(),

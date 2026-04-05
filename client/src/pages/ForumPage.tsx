@@ -57,7 +57,7 @@ function ThreadView({
   onBackToRace,
 }: {
   postId: number;
-  raceId: number;
+  raceId: number | null;
   raceName: string;
   postTitle: string;
   onBack: () => void;
@@ -78,7 +78,11 @@ function ThreadView({
     onSuccess: () => {
       setComment("");
       queryClient.invalidateQueries({ queryKey: [`/api/forum/posts/${postId}/comments`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/forum/race/${raceId}`] });
+      if (raceId === null) {
+        queryClient.invalidateQueries({ queryKey: [`/api/forum/general`] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: [`/api/forum/race/${raceId}`] });
+      }
     },
     onError: () => toast({ title: "Failed to post reply", variant: "destructive" }),
   });
@@ -475,10 +479,237 @@ function RaceForum({
   );
 }
 
+/* ─── General Forum (Topic List for non-race discussions) ─── */
+function GeneralForum({
+  onBack,
+  onSelectPost,
+}: {
+  onBack: () => void;
+  onSelectPost: (postId: number, title: string) => void;
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
+
+  const { data: posts, isLoading } = useQuery<any[]>({
+    queryKey: [`/api/forum/general`],
+    staleTime: 0,
+  });
+
+  const createPostMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/forum/posts", { raceId: null, title: newTitle, content: newContent }),
+    onSuccess: async () => {
+      setNewTitle("");
+      setNewContent("");
+      setShowForm(false);
+      await queryClient.invalidateQueries({ queryKey: [`/api/forum/general`] });
+      toast({ title: "Topic posted!" });
+    },
+    onError: () => toast({ title: "Failed to post topic", variant: "destructive" }),
+  });
+
+  return (
+    <div>
+      <Breadcrumb items={[
+        { label: "Forum", onClick: onBack },
+        { label: "General Discussion" },
+      ]} />
+
+      {/* Board header */}
+      <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-5 py-4 mb-4">
+        <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center flex-shrink-0">
+          <MessageSquare className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <h1 className="font-racing text-xl font-black text-gray-900">General Discussion</h1>
+          <p className="text-xs text-gray-400 mt-0.5">F1 news, predictions, regulations, fantasy league, and everything else</p>
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-racing text-[10px] text-gray-400 tracking-widest uppercase">
+          {posts?.length || 0} topic{posts?.length !== 1 ? "s" : ""}
+        </span>
+        {user && !showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            data-testid="button-new-general-post"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-racing text-xs font-bold hover:bg-red-700 transition-all shadow-sm shadow-primary/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Topic
+          </button>
+        )}
+        {!user && (
+          <a href="/login" className="font-racing text-[11px] text-primary hover:underline">
+            Sign in to post
+          </a>
+        )}
+      </div>
+
+      {/* New topic form */}
+      {showForm && (
+        <div className="bg-white border border-primary/20 rounded-xl p-5 mb-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-racing text-sm font-bold text-gray-900">New Topic</h3>
+            <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-700">✕</button>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Topic title..."
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              data-testid="input-general-post-title"
+              className={inputCls}
+              maxLength={120}
+            />
+            <textarea
+              placeholder="Share your thoughts..."
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              rows={5}
+              data-testid="input-general-post-content"
+              className={inputCls + " resize-none"}
+            />
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => { setShowForm(false); setNewTitle(""); setNewContent(""); }}
+                className="px-4 py-2 rounded-lg border border-gray-200 font-racing text-xs text-gray-500 hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createPostMutation.mutate()}
+                disabled={!newTitle.trim() || !newContent.trim() || createPostMutation.isPending}
+                data-testid="button-submit-general-post"
+                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-white font-racing text-xs font-bold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {createPostMutation.isPending ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-3.5 h-3.5" />
+                )}
+                Post Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Topic table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="hidden sm:grid grid-cols-[1fr_100px_130px] bg-gray-50 border-b border-gray-200 px-4 py-2">
+          <span className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">Topic</span>
+          <span className="font-racing text-[9px] text-gray-400 tracking-widest uppercase text-center">Replies</span>
+          <span className="font-racing text-[9px] text-gray-400 tracking-widest uppercase text-right">Last Post</span>
+        </div>
+
+        {isLoading ? (
+          <div className="divide-y divide-gray-100">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="px-4 py-4 flex gap-3 animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-gray-100 rounded w-2/3" />
+                  <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !posts || posts.length === 0 ? (
+          <div className="p-12 text-center">
+            <MessageSquare className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+            <p className="font-racing text-sm text-gray-400">No topics yet.</p>
+            {user && !showForm && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 px-5 py-2 rounded-lg bg-primary text-white font-racing text-xs font-bold hover:bg-red-700 transition-all"
+              >
+                Start Discussion
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                className="sm:grid sm:grid-cols-[1fr_100px_130px] items-center hover:bg-gray-50/70 transition-colors group"
+                data-testid={`card-general-post-${post.id}`}
+              >
+                <button
+                  className="w-full text-left px-4 py-3.5 flex items-start gap-3"
+                  onClick={() => onSelectPost(post.id, post.title)}
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="font-racing text-primary text-[11px] font-bold">
+                      {(post.username || "P").charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-racing text-sm font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
+                      {post.title}
+                    </p>
+                    <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{post.content}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <User className="w-3 h-3 text-gray-300" />
+                      <span className="font-racing text-[10px] text-gray-400">{post.username || "F1 Fan Hub"}</span>
+                      <span className="text-gray-200">·</span>
+                      <Clock className="w-3 h-3 text-gray-300" />
+                      <span className="font-racing text-[10px] text-gray-400">
+                        {post.createdAt ? relativeTime(post.createdAt) : ""}
+                      </span>
+                      <span className="sm:hidden text-gray-200">·</span>
+                      <span className="sm:hidden font-racing text-[10px] text-gray-400">
+                        {post.commentCount} {post.commentCount === 1 ? "reply" : "replies"}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="hidden sm:flex items-center justify-center px-2 py-3.5">
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-gray-300" />
+                    <span className="font-racing text-sm font-bold text-gray-700">{post.commentCount}</span>
+                  </div>
+                </div>
+
+                <div className="hidden sm:block px-4 py-3.5 text-right">
+                  <p className="font-racing text-[10px] text-gray-400 leading-tight">
+                    {post.createdAt ? relativeTime(post.createdAt) : ""}
+                  </p>
+                  <p className="font-racing text-[10px] text-gray-500 font-bold mt-0.5">
+                    {post.username || "F1 Fan Hub"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Forum Index (Race / Board List) ─── */
-function ForumIndex({ onSelectRace }: { onSelectRace: (id: number) => void }) {
+function ForumIndex({
+  onSelectRace,
+  onSelectGeneral,
+}: {
+  onSelectRace: (id: number) => void;
+  onSelectGeneral: () => void;
+}) {
   const { data: races } = useQuery<Race[]>({
     queryKey: [`/api/races`],
+  });
+  const { data: generalPosts } = useQuery<any[]>({
+    queryKey: [`/api/forum/general`],
   });
 
   const completed = races?.filter((r) => r.status === "completed") || [];
@@ -572,6 +803,38 @@ function ForumIndex({ onSelectRace }: { onSelectRace: (id: number) => void }) {
         <p className="text-sm text-gray-400 ml-7">Discuss every race, lap, and moment of the 2026 season.</p>
       </div>
 
+      {/* General Discussion board */}
+      <div className="mb-6">
+        <div className="bg-primary px-4 py-2 rounded-t-xl">
+          <h2 className="font-racing text-xs font-bold text-white tracking-widest uppercase">General Discussion</h2>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-b-xl overflow-hidden">
+          <button
+            data-testid="button-general-forum"
+            className="w-full text-left hover:bg-gray-50/80 transition-colors group"
+            onClick={onSelectGeneral}
+          >
+            <div className="flex items-center gap-4 px-4 py-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-racing text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                  General Discussion
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  F1 news, predictions, regulations, fantasy league, and everything in between
+                </p>
+                <p className="font-racing text-[10px] text-gray-400 mt-1">
+                  {generalPosts?.length || 0} topic{generalPosts?.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary transition-colors flex-shrink-0" />
+            </div>
+          </button>
+        </div>
+      </div>
+
       {!races ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
@@ -589,7 +852,7 @@ function ForumIndex({ onSelectRace }: { onSelectRace: (id: number) => void }) {
 }
 
 /* ─── Main export ─── */
-type View = "index" | "topics" | "thread";
+type View = "index" | "topics" | "general" | "thread";
 
 export default function ForumPage() {
   const [routeMatch, routeParams] = useRoute("/forum/:raceId");
@@ -601,26 +864,41 @@ export default function ForumPage() {
   );
   const [postId, setPostId] = useState<number | null>(null);
   const [postTitle, setPostTitle] = useState("");
+  const [isGeneralThread, setIsGeneralThread] = useState(false);
 
-  // Fetch race name for the thread breadcrumb
   const { data: race } = useQuery<Race>({
     queryKey: [`/api/races/${raceId}`],
     enabled: !!raceId,
   });
 
-  function goIndex() { setView("index"); setRaceId(null); setPostId(null); }
-  function goTopics(id: number) { setRaceId(id); setView("topics"); setPostId(null); }
-  function goThread(pid: number, title: string) { setPostId(pid); setPostTitle(title); setView("thread"); }
+  function goIndex() { setView("index"); setRaceId(null); setPostId(null); setIsGeneralThread(false); }
+  function goTopics(id: number) { setRaceId(id); setView("topics"); setPostId(null); setIsGeneralThread(false); }
+  function goGeneral() { setView("general"); setRaceId(null); setPostId(null); setIsGeneralThread(false); }
+  function goThread(pid: number, title: string, isGeneral = false) {
+    setPostId(pid);
+    setPostTitle(title);
+    setIsGeneralThread(isGeneral);
+    setView("thread");
+  }
 
-  if (view === "thread" && postId !== null && raceId !== null) {
+  if (view === "thread" && postId !== null) {
     return (
       <ThreadView
         postId={postId}
-        raceId={raceId}
-        raceName={race?.name || "Race Forum"}
+        raceId={isGeneralThread ? null : raceId}
+        raceName={isGeneralThread ? "General Discussion" : (race?.name || "Race Forum")}
         postTitle={postTitle}
-        onBack={() => setView("topics")}
+        onBack={() => isGeneralThread ? setView("general") : setView("topics")}
         onBackToRace={goIndex}
+      />
+    );
+  }
+
+  if (view === "general") {
+    return (
+      <GeneralForum
+        onBack={goIndex}
+        onSelectPost={(pid, title) => goThread(pid, title, true)}
       />
     );
   }
@@ -630,10 +908,10 @@ export default function ForumPage() {
       <RaceForum
         raceId={raceId}
         onBack={goIndex}
-        onSelectPost={goThread}
+        onSelectPost={(pid, title) => goThread(pid, title, false)}
       />
     );
   }
 
-  return <ForumIndex onSelectRace={goTopics} />;
+  return <ForumIndex onSelectRace={goTopics} onSelectGeneral={goGeneral} />;
 }

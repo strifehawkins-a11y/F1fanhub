@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, sql, isNull } from "drizzle-orm";
 import {
   userProfile, races, quizQuestions, quizAttempts,
   forumPosts, forumComments, articles, articleComments, articleViews, novelProgress,
@@ -59,6 +59,7 @@ export interface IStorage {
   // Forum
   getAllForumPosts(): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
   getForumPostsByRace(raceId: number): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
+  getGeneralForumPosts(): Promise<Array<ForumPost & { username: string | null; profileImageUrl: string | null; commentCount: number }>>;
   getForumPostById(id: number): Promise<ForumPost | undefined>;
   createForumPost(post: InsertForumPost): Promise<ForumPost>;
   getForumComments(postId: number): Promise<Array<ForumComment & { username: string | null; profileImageUrl: string | null }>>;
@@ -300,6 +301,44 @@ export class DatabaseStorage implements IStorage {
       .from(forumPosts)
       .leftJoin(users, eq(forumPosts.userId, users.id))
       .where(eq(forumPosts.raceId, raceId))
+      .orderBy(desc(forumPosts.createdAt));
+
+    const commentCounts = await db
+      .select({ postId: forumComments.postId, count: sql<number>`count(*)` })
+      .from(forumComments)
+      .groupBy(forumComments.postId);
+
+    const countMap = new Map(commentCounts.map((c) => [c.postId, Number(c.count)]));
+
+    return posts.map((p) => ({
+      id: p.id,
+      raceId: p.raceId,
+      userId: p.userId,
+      title: p.title,
+      content: p.content,
+      createdAt: p.createdAt,
+      username: p.firstName ? `${p.firstName} ${p.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: p.profileImageUrl,
+      commentCount: countMap.get(p.id) || 0,
+    }));
+  }
+
+  async getGeneralForumPosts() {
+    const posts = await db
+      .select({
+        id: forumPosts.id,
+        raceId: forumPosts.raceId,
+        userId: forumPosts.userId,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        createdAt: forumPosts.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(forumPosts)
+      .leftJoin(users, eq(forumPosts.userId, users.id))
+      .where(isNull(forumPosts.raceId))
       .orderBy(desc(forumPosts.createdAt));
 
     const commentCounts = await db
