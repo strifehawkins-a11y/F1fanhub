@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { localCredentials } from "@shared/schema";
@@ -32,12 +32,16 @@ export function setupLocalAuth(app: Express) {
       { usernameField: "email", passwordField: "password" },
       async (email, password, done) => {
         try {
+          const input = email.trim();
           const [cred] = await db
             .select()
             .from(localCredentials)
-            .where(eq(localCredentials.email, email.toLowerCase()));
+            .where(or(
+              eq(localCredentials.email, input.toLowerCase()),
+              eq(localCredentials.displayName, input),
+            ));
 
-          if (!cred) return done(null, false, { message: "Invalid email or password" });
+          if (!cred) return done(null, false, { message: "Invalid username/email or password" });
 
           const valid = await bcrypt.compare(password, cred.passwordHash);
           if (!valid) return done(null, false, { message: "Invalid email or password" });
