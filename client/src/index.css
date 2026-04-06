@@ -223,6 +223,10 @@
     inset: -1px;
   }
 
+  /* Hide scrollbar for article carousel */
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
   /* F1 red accent line used throughout */
   .f1-red-bar {
     height: 3px;

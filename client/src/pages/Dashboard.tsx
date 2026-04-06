@@ -543,8 +543,8 @@ function ArticleCard({ article }: { article: any }) {
           <h3 className="font-racing text-sm font-black text-gray-900 leading-tight line-clamp-3 mb-2 flex-1 group-hover:text-primary transition-colors">
             {article.title}
           </h3>
-          <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 mb-3">{article.excerpt}</p>
-          <div className="flex items-center gap-2 text-[10px] text-gray-400 border-t border-gray-50 pt-2 mt-auto">
+          <p className="text-[11px] text-gray-600 leading-relaxed line-clamp-2 mb-3">{article.excerpt}</p>
+          <div className="flex items-center gap-2 text-[10px] text-gray-500 border-t border-gray-100 pt-2 mt-auto">
             <span className="font-racing truncate flex-1">{article.username || "F1 Paddock"}</span>
             <span>{article.publishedAt ? format(new Date(article.publishedAt), "d MMM") : ""}</span>
             <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{readTime}m</span>
@@ -645,10 +645,10 @@ function DashboardSlider({ articles }: { articles: any[] }) {
               {slide.title}
               <span className="inline-block ml-2 text-primary align-middle text-xl">↗</span>
             </h2>
-            <p className="text-white/60 text-sm leading-relaxed line-clamp-2 max-w-lg mb-1">
+            <p className="text-white/80 text-sm leading-relaxed line-clamp-2 max-w-lg mb-1">
               {slide.excerpt}
             </p>
-            <div className="flex items-center gap-4 text-white/40 text-[11px] mt-2">
+            <div className="flex items-center gap-4 text-white/60 text-[11px] mt-2">
               <span className="font-racing">{slide.username || "F1 Paddock"}</span>
               <span>{slide.publishedAt ? format(new Date(slide.publishedAt), "d MMM yyyy") : ""}</span>
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{estimateReadTime(slide.content)} min read</span>
@@ -797,6 +797,12 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Mobile-only: poll + next race pinned above articles */}
+          <div className="lg:hidden grid grid-cols-2 gap-3">
+            {races && <NextRaceWidget races={races} profile={profile} />}
+            <PollsWidget />
+          </div>
+
           {/* General News section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-4">
@@ -804,7 +810,7 @@ export default function Dashboard() {
                 <div className="w-1 h-6 bg-primary rounded-full" />
                 <div>
                   <h2 className="mcl-heading text-lg text-gray-900">General News</h2>
-                  <p className="mcl-label text-gray-400 mt-0.5">Latest from the paddock</p>
+                  <p className="mcl-label text-gray-500 mt-0.5">Latest from the paddock</p>
                 </div>
               </div>
               <Link href="/articles">
@@ -815,36 +821,41 @@ export default function Dashboard() {
             </div>
 
             {articlesLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-56 flex-shrink-0 rounded-xl" />)}
               </div>
             ) : gridArticles.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {gridArticles.map(article => <ArticleCard key={article.id} article={article} />)}
+              <div className="flex gap-4 overflow-x-auto pb-3 -mx-1 px-1 hide-scrollbar">
+                {gridArticles.map(article => (
+                  <div key={article.id} className="flex-shrink-0 w-64 sm:w-72">
+                    <ArticleCard article={article} />
+                  </div>
+                ))}
+                <div className="flex-shrink-0 w-4" />
               </div>
             ) : (
               <div className="rounded-xl border border-gray-100 bg-white p-8 text-center">
-                <p className="font-racing text-xs text-gray-400 tracking-widest uppercase">No articles yet</p>
+                <p className="font-racing text-xs text-gray-500 tracking-widest uppercase">No articles yet</p>
               </div>
             )}
 
-            {articles && articles.length > 4 && (
-              <Link href="/articles">
-                <button
-                  data-testid="button-view-all-articles"
-                  className="w-full mt-4 py-3 border border-gray-200 rounded-xl font-racing text-xs text-gray-400 hover:text-gray-900 hover:border-primary/30 transition-all flex items-center justify-center gap-2 bg-white"
-                >
-                  View All Articles <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </Link>
-            )}
+            <Link href="/articles">
+              <button
+                data-testid="button-view-all-articles"
+                className="w-full mt-4 py-3 border border-gray-200 rounded-xl font-racing text-xs text-gray-500 hover:text-gray-900 hover:border-primary/30 transition-all flex items-center justify-center gap-2 bg-white"
+              >
+                View All Articles <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </Link>
           </div>
         </div>
 
-        {/* Right: sidebar */}
+        {/* Right: sidebar — desktop only for poll + next race */}
         <div className="space-y-4">
-          {races && <NextRaceWidget races={races} profile={profile} />}
-          <PollsWidget />
+          <div className="hidden lg:flex lg:flex-col lg:gap-4">
+            {races && <NextRaceWidget races={races} profile={profile} />}
+            <PollsWidget />
+          </div>
           <MiniStandings
             drivers={driverStandings || []}
             constructors={constructorStandings || []}
