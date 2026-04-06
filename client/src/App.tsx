@@ -23,6 +23,7 @@ import ContactPage from "@/pages/ContactPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import AboutPage from "@/pages/AboutPage";
 import SubmitStoryPage from "@/pages/SubmitStoryPage";
+import JobsPage from "@/pages/JobsPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
 
@@ -53,6 +54,7 @@ function AuthenticatedApp() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/submit-story" component={SubmitStoryPage} />
+        <Route path="/jobs" component={JobsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
