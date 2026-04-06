@@ -176,7 +176,7 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
 
   const paddockArticles = articles?.filter((a: any) => a.section === "paddock") ?? [];
   const slides = paddockArticles.length > 0
-    ? paddockArticles.slice(0, 3).map((a: any, i: number) => ({
+    ? paddockArticles.slice(0, 5).map((a: any, i: number) => ({
         id: a.id,
         slug: a.slug || a.id,
         title: a.title,

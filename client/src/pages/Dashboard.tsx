@@ -561,10 +561,12 @@ const F1_SLIDE_GRADIENTS = [
   "from-gray-950 via-gray-900 to-red-950",
   "from-slate-950 via-slate-900 to-slate-800",
   "from-zinc-950 via-zinc-900 to-rose-950",
+  "from-neutral-950 via-neutral-900 to-red-900",
+  "from-stone-950 via-stone-900 to-slate-800",
 ];
 
 function DashboardSlider({ articles }: { articles: any[] }) {
-  const slides = articles.slice(0, 3);
+  const slides = articles.slice(0, 5);
   const [current, setCurrent] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
