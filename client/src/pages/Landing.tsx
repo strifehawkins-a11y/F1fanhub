@@ -244,10 +244,13 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
       ))}
 
       <div className="relative z-20 flex flex-col justify-end h-full" style={{ minHeight: "76vh" }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 pb-24 pt-16 w-full">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 pb-20 pt-16 w-full">
           {slide.tags && slide.tags.length > 0 && (
-            <div className="mb-4">
-              <span className="inline-block font-racing text-[10px] tracking-[0.35em] uppercase font-bold text-primary bg-white/10 border border-white/20 backdrop-blur-sm px-3 py-1.5 rounded-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="w-5 h-5 bg-primary flex items-center justify-center flex-shrink-0">
+                <span className="font-racing text-white text-[8px] font-black">F1</span>
+              </div>
+              <span className="font-racing text-[11px] tracking-[0.3em] uppercase font-bold text-white/80">
                 {slide.tags[0]}
               </span>
             </div>
@@ -255,80 +258,87 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
 
           <h2
             key={current}
-            className="font-racing text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[0.9] mb-5 max-w-3xl"
-            style={{ animation: "slideUp 0.5s ease forwards" }}
+            className="font-racing text-4xl sm:text-5xl md:text-6xl font-black text-white uppercase leading-[0.92] mb-4 max-w-2xl"
+            style={{ animation: "slideUp 0.45s ease forwards" }}
           >
             {slide.title}
+            {slide.slug && (
+              <span className="inline-block ml-3 text-primary align-middle" style={{ fontSize: "0.7em" }}>↗</span>
+            )}
           </h2>
-
-          <p className="text-white/70 text-base leading-relaxed max-w-xl mb-8">
-            {slide.excerpt}
-          </p>
 
           <div className="flex items-center gap-4">
             {slide.slug ? (
               <a href={`/articles/${slide.slug}`}>
                 <button
                   data-testid={`button-slide-read-${slide.id}`}
-                  className="group flex items-center gap-3 px-7 py-3.5 bg-primary text-white font-racing text-sm font-bold tracking-wide hover:bg-red-600 transition-all"
+                  className="group flex items-center gap-3 px-6 py-3 bg-primary text-white font-racing text-xs font-bold tracking-widest uppercase hover:bg-red-600 transition-all"
                 >
-                  Read Story
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Read More
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </button>
               </a>
             ) : (
               <button
                 data-testid="button-slide-join"
                 onClick={onSignUp}
-                className="group flex items-center gap-3 px-7 py-3.5 bg-primary text-white font-racing text-sm font-bold tracking-wide hover:bg-red-600 transition-all"
+                className="group flex items-center gap-3 px-6 py-3 bg-primary text-white font-racing text-xs font-bold tracking-widest uppercase hover:bg-red-600 transition-all"
               >
                 Join Free
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </button>
             )}
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+        {/* Bottom nav bar — numbered tabs + arrows (McLaren style) */}
+        <div className="absolute bottom-0 left-0 right-0 z-30 bg-black/60 backdrop-blur-sm border-t border-white/10">
           <div className="max-w-7xl mx-auto px-6 sm:px-10">
-            <div className="flex items-stretch">
-              {slides.map((s, i) => (
+            <div className="flex items-center justify-between py-0">
+              {/* Numbered slide selectors */}
+              <div className="flex items-stretch">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    data-testid={`button-slide-tab-${i}`}
+                    onClick={() => goTo(i)}
+                    className={`relative w-14 sm:w-16 py-4 flex flex-col items-center justify-center transition-all group`}
+                    style={{
+                      background: i === current ? "rgba(196,18,48,0.15)" : "transparent",
+                    }}
+                  >
+                    {/* Active top bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-[3px] transition-all duration-300 ${i === current ? "bg-primary" : "bg-transparent group-hover:bg-white/20"}`} />
+                    <span
+                      className="font-racing text-sm font-black tracking-wider"
+                      style={{ color: i === current ? "#C41230" : "rgba(255,255,255,0.4)" }}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Arrow buttons */}
+              <div className="flex items-center gap-0">
                 <button
-                  key={s.id}
-                  data-testid={`button-slide-tab-${i}`}
-                  onClick={() => goTo(i)}
-                  className={`flex-1 text-left px-4 py-4 transition-all relative border-r border-white/10 last:border-r-0 group ${
-                    i === current ? "bg-white/10" : "hover:bg-white/5"
-                  }`}
+                  onClick={prev}
+                  data-testid="button-slide-prev"
+                  className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-primary transition-all text-white border-l border-white/10"
                 >
-                  <div className={`absolute top-0 left-0 right-0 h-0.5 transition-all duration-300 ${i === current ? "bg-primary" : "bg-transparent group-hover:bg-white/20"}`} />
-                  <div className="font-racing text-[9px] tracking-[0.25em] uppercase mb-1 truncate"
-                    style={{ color: i === current ? "#C41230" : "rgba(255,255,255,0.35)" }}>
-                    {s.tags?.[0] || "Feature"}
-                  </div>
-                  <div className={`font-racing text-xs font-bold leading-tight line-clamp-2 transition-colors ${i === current ? "text-white" : "text-white/40 group-hover:text-white/60"}`}>
-                    {s.title}
-                  </div>
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-              ))}
+                <button
+                  onClick={next}
+                  data-testid="button-slide-next"
+                  className="w-12 h-12 flex items-center justify-center bg-primary hover:bg-red-600 transition-all text-white"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-
-        <button
-          onClick={prev}
-          data-testid="button-slide-prev"
-          className="absolute left-4 top-1/2 -translate-y-8 z-30 w-10 h-10 flex items-center justify-center bg-black/30 hover:bg-black/60 border border-white/20 text-white transition-all backdrop-blur-sm"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={next}
-          data-testid="button-slide-next"
-          className="absolute right-4 top-1/2 -translate-y-8 z-30 w-10 h-10 flex items-center justify-center bg-black/30 hover:bg-black/60 border border-white/20 text-white transition-all backdrop-blur-sm"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
 
       <style>{`
