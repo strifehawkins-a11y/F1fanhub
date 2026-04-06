@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
@@ -556,6 +556,152 @@ function ArticleCard({ article }: { article: any }) {
   );
 }
 
+const SLIDE_INTERVAL = 6000;
+const F1_SLIDE_GRADIENTS = [
+  "from-gray-950 via-gray-900 to-red-950",
+  "from-slate-950 via-slate-900 to-slate-800",
+  "from-zinc-950 via-zinc-900 to-rose-950",
+];
+
+function DashboardSlider({ articles }: { articles: any[] }) {
+  const slides = articles.slice(0, 3);
+  const [current, setCurrent] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const goTo = useCallback((idx: number) => {
+    setCurrent(idx);
+  }, []);
+
+  const next = useCallback(() => setCurrent(c => (c + 1) % slides.length), [slides.length]);
+  const prev = useCallback(() => setCurrent(c => (c - 1 + slides.length) % slides.length), [slides.length]);
+
+  useEffect(() => {
+    if (isHovered || slides.length < 2) return;
+    timerRef.current = setInterval(next, SLIDE_INTERVAL);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isHovered, next, slides.length]);
+
+  const [failedImgs, setFailedImgs] = useState<Record<string, boolean>>({});
+
+  if (slides.length === 0) return null;
+
+  const slide = slides[current];
+  const category = getCategoryFromTags(slide.tags);
+  const href = `/articles/${slide.slug || slide.id}`;
+
+  return (
+    <div
+      className="relative rounded-2xl overflow-hidden"
+      style={{ minHeight: 340 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Slides background */}
+      {slides.map((s, i) => (
+        <div
+          key={s.id}
+          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+        >
+          {s.imageUrl && !failedImgs[s.id] ? (
+            <>
+              <img
+                src={s.imageUrl}
+                alt={s.title}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={() => setFailedImgs(f => ({ ...f, [s.id]: true }))}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+            </>
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${F1_SLIDE_GRADIENTS[i % F1_SLIDE_GRADIENTS.length]}`}>
+              <div className="absolute inset-0 opacity-[0.04]"
+                style={{ backgroundImage: "repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)", backgroundSize: "20px 20px" }} />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Left red accent bar */}
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary z-20" />
+
+      {/* Content */}
+      <div className="relative z-20 flex flex-col justify-end h-full" style={{ minHeight: 340 }}>
+        <Link href={href}>
+          <div className="px-6 pb-16 pt-10 cursor-pointer group">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 bg-primary flex items-center justify-center flex-shrink-0">
+                <span className="font-racing text-white text-[8px] font-black">F1</span>
+              </div>
+              <span className="font-racing text-[11px] tracking-[0.3em] uppercase font-bold text-white/70">
+                {category}
+              </span>
+            </div>
+            <h2
+              key={current}
+              className="mcl-heading text-3xl sm:text-4xl text-white mb-3 max-w-lg group-hover:text-primary/90 transition-colors"
+              style={{ animation: "dashSlideUp 0.4s ease forwards" }}
+            >
+              {slide.title}
+              <span className="inline-block ml-2 text-primary align-middle text-xl">↗</span>
+            </h2>
+            <p className="text-white/60 text-sm leading-relaxed line-clamp-2 max-w-lg mb-1">
+              {slide.excerpt}
+            </p>
+            <div className="flex items-center gap-4 text-white/40 text-[11px] mt-2">
+              <span className="font-racing">{slide.username || "F1 Paddock"}</span>
+              <span>{slide.publishedAt ? format(new Date(slide.publishedAt), "d MMM yyyy") : ""}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{estimateReadTime(slide.content)} min read</span>
+            </div>
+          </div>
+        </Link>
+
+        {/* McLaren-style bottom nav bar */}
+        {slides.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 z-30 bg-black/60 backdrop-blur-sm border-t border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-stretch">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goTo(i)}
+                    data-testid={`button-dash-slide-${i}`}
+                    className="relative w-14 py-3 flex items-center justify-center transition-all"
+                    style={{ background: i === current ? "rgba(196,18,48,0.15)" : "transparent" }}
+                  >
+                    <div className={`absolute top-0 left-0 right-0 h-[3px] transition-all ${i === current ? "bg-primary" : "bg-transparent"}`} />
+                    <span className="font-racing text-sm font-black tracking-wider"
+                      style={{ color: i === current ? "#C41230" : "rgba(255,255,255,0.35)" }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex">
+                <button onClick={prev} data-testid="button-dash-prev"
+                  className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-primary transition-all text-white border-l border-white/10">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={next} data-testid="button-dash-next"
+                  className="w-10 h-10 flex items-center justify-center bg-primary hover:bg-red-600 transition-all text-white">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes dashSlideUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -616,9 +762,9 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="font-racing text-[10px] text-primary tracking-[0.25em] uppercase font-bold">2026 Season</span>
+            <span className="mcl-label text-primary">2026 Season</span>
           </div>
-          <h1 className="font-racing text-2xl font-black text-gray-900 tracking-tight mt-0.5">F1 Paddock</h1>
+          <h1 className="mcl-heading text-3xl text-gray-900 mt-0.5">F1 Paddock</h1>
         </div>
         {profile && (
           <button
@@ -638,9 +784,9 @@ export default function Dashboard() {
         {/* Left: news */}
         <div className="space-y-4">
           {articlesLoading ? (
-            <Skeleton className="h-80 w-full rounded-2xl" />
-          ) : heroArticle ? (
-            <HeroArticle article={heroArticle} />
+            <Skeleton className="h-[340px] w-full rounded-2xl" />
+          ) : paddockArticles.length > 0 ? (
+            <DashboardSlider articles={paddockArticles} />
           ) : (
             <div className="relative rounded-2xl overflow-hidden flex items-center justify-center min-h-[220px]" style={{ background: "linear-gradient(135deg, #0d0005 0%, #1a0008 40%, #3d0015 70%, #2d0010 100%)" }}>
               <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
@@ -657,8 +803,8 @@ export default function Dashboard() {
               <div className="flex items-center gap-3">
                 <div className="w-1 h-6 bg-primary rounded-full" />
                 <div>
-                  <h2 className="font-racing text-base font-black text-gray-900 uppercase tracking-tight leading-none">General News</h2>
-                  <p className="font-racing text-[9px] text-gray-400 tracking-widest uppercase mt-0.5">Latest from the paddock</p>
+                  <h2 className="mcl-heading text-lg text-gray-900">General News</h2>
+                  <p className="mcl-label text-gray-400 mt-0.5">Latest from the paddock</p>
                 </div>
               </div>
               <Link href="/articles">

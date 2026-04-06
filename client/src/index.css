@@ -230,6 +230,31 @@
   }
 }
 
+/* ── McLaren-inspired typography ──────────────────────────────────────── */
+.mcl-heading {
+  font-family: var(--font-racing, 'Oxanium', sans-serif);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+
+.mcl-label {
+  font-family: var(--font-racing, 'Oxanium', sans-serif);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 0.68rem;
+}
+
+.mcl-stat {
+  font-family: var(--font-racing, 'Oxanium', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+/* ───────────────────────────────────────────────────────────────────────── */
+
 @keyframes beaFadeIn {
   from { opacity: 0; transform: scale(0.97); }
   to   { opacity: 1; transform: scale(1); }

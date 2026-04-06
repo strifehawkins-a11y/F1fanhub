@@ -255,7 +255,7 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
 
           <h2
             key={current}
-            className="font-racing text-4xl sm:text-5xl md:text-6xl font-black text-white uppercase leading-[0.92] mb-4 max-w-2xl"
+            className="mcl-heading text-4xl sm:text-5xl md:text-6xl text-white mb-4 max-w-2xl"
             style={{ animation: "slideUp 0.45s ease forwards" }}
           >
             {slide.title}
