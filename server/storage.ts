@@ -66,6 +66,8 @@ export interface IStorage {
   createForumComment(comment: InsertForumComment): Promise<ForumComment>;
   deleteForumPost(id: number, userId: string): Promise<boolean>;
   deleteForumComment(id: number, userId: string): Promise<boolean>;
+  adminUpdateForumPost(id: number, data: { title: string; content: string }): Promise<ForumPost | undefined>;
+  adminDeleteForumPost(id: number): Promise<boolean>;
 
   // Articles
   getArticles(): Promise<Array<Article & { username: string | null; profileImageUrl: string | null; commentCount: number; viewCount: number }>>;
@@ -411,6 +413,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteForumComment(id: number, userId: string): Promise<boolean> {
     const result = await db.delete(forumComments).where(and(eq(forumComments.id, id), eq(forumComments.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async adminUpdateForumPost(id: number, data: { title: string; content: string }): Promise<ForumPost | undefined> {
+    const [result] = await db.update(forumPosts).set({ title: data.title, content: data.content }).where(eq(forumPosts.id, id)).returning();
+    return result;
+  }
+
+  async adminDeleteForumPost(id: number): Promise<boolean> {
+    await db.delete(forumComments).where(eq(forumComments.postId, id));
+    const result = await db.delete(forumPosts).where(eq(forumPosts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 

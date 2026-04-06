@@ -361,6 +361,33 @@ ${items}  </channel>
     }
   });
 
+  app.patch("/api/admin/forum/posts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const { title, content } = req.body;
+      if (!title || !content) return res.status(400).json({ message: "Title and content required" });
+      const post = await storage.adminUpdateForumPost(Number(req.params.id), { title, content });
+      if (!post) return res.status(404).json({ message: "Post not found" });
+      res.json(post);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update post" });
+    }
+  });
+
+  app.delete("/api/admin/forum/posts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      await storage.adminDeleteForumPost(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
   app.get("/api/forum/posts/:id/comments", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,7 +29,7 @@ async function uploadImage(file: File): Promise<string> {
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
 
-type Tab = "articles" | "standings" | "races" | "polls" | "submissions";
+type Tab = "articles" | "standings" | "races" | "polls" | "submissions" | "forum";
 
 interface PollForm {
   question: string;
@@ -73,9 +73,19 @@ export default function AdminPage() {
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [pollForm, setPollForm] = useState<PollForm>(emptyPollForm);
 
+  // Forum state
+  const [editingForumPostId, setEditingForumPostId] = useState<number | null>(null);
+  const [forumEditForm, setForumEditForm] = useState({ title: "", content: "" });
+
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const { data: articles, isLoading } = useQuery<any[]>({ queryKey: ["/api/articles"] });
   const { data: pendingArticles } = useQuery<any[]>({ queryKey: ["/api/articles/pending"], enabled: !!profile?.isAdmin });
+  const { data: forumPosts, isLoading: forumLoading } = useQuery<any[]>({
+    queryKey: ["/api/forum/posts"],
+    queryFn: () => fetch("/api/forum/posts").then(r => r.json()),
+    staleTime: 0,
+    enabled: !!profile?.isAdmin,
+  });
   const { data: pollsData } = useQuery<any[]>({ queryKey: ["/api/polls"] });
   const { data: drivers } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
   const { data: constructors } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
@@ -166,6 +176,27 @@ export default function AdminPage() {
   const deletePollMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/polls/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/polls"] }); toast({ title: "Poll deleted" }); },
+  });
+
+  // Forum mutations
+  const updateForumPostMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { title: string; content: string } }) =>
+      apiRequest("PATCH", `/api/admin/forum/posts/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forum/posts"] });
+      setEditingForumPostId(null);
+      setForumEditForm({ title: "", content: "" });
+      toast({ title: "Post updated!" });
+    },
+    onError: () => toast({ title: "Error updating post", variant: "destructive" }),
+  });
+  const deleteForumPostMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/forum/posts/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forum/posts"] });
+      toast({ title: "Post deleted" });
+    },
+    onError: () => toast({ title: "Error deleting post", variant: "destructive" }),
   });
 
   const handlePollSubmit = () => {
@@ -282,6 +313,7 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "articles", label: "Articles", icon: Newspaper },
     { key: "submissions", label: "Submissions", icon: Inbox, badge: pendingCount },
+    { key: "forum", label: "Forum", icon: MessageSquare, badge: forumPosts?.length },
     { key: "polls", label: "Polls", icon: BarChart3 },
     { key: "standings", label: "Standings", icon: BarChart2 },
     { key: "races", label: "Races", icon: Calendar },
@@ -1003,6 +1035,123 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── FORUM TAB ── */}
+      {tab === "forum" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-racing text-lg font-black text-gray-900">Forum Posts</h2>
+              <p className="font-racing text-[10px] text-gray-400 tracking-widest uppercase mt-0.5">
+                {forumPosts?.length ?? 0} total posts
+              </p>
+            </div>
+          </div>
+
+          {forumLoading ? (
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5 animate-pulse">
+                  <div className="h-4 bg-gray-100 rounded w-2/3 mb-2" />
+                  <div className="h-3 bg-gray-50 rounded w-1/3" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(forumPosts ?? []).map((post: any) => (
+                <div key={post.id} className="bg-white border border-gray-100 rounded-2xl p-5">
+                  {editingForumPostId === post.id ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className={labelCls}>Title</label>
+                        <input
+                          data-testid={`input-forum-title-${post.id}`}
+                          value={forumEditForm.title}
+                          onChange={e => setForumEditForm(f => ({ ...f, title: e.target.value }))}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Content</label>
+                        <textarea
+                          data-testid={`input-forum-content-${post.id}`}
+                          value={forumEditForm.content}
+                          onChange={e => setForumEditForm(f => ({ ...f, content: e.target.value }))}
+                          rows={6}
+                          className={inputCls + " resize-none"}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          data-testid={`button-forum-save-${post.id}`}
+                          onClick={() => updateForumPostMutation.mutate({ id: post.id, data: forumEditForm })}
+                          disabled={updateForumPostMutation.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-racing text-xs font-bold rounded-lg hover:bg-red-700 transition-all disabled:opacity-50"
+                        >
+                          <Save className="w-3 h-3" /> Save Changes
+                        </button>
+                        <button
+                          onClick={() => { setEditingForumPostId(null); setForumEditForm({ title: "", content: "" }); }}
+                          className="px-4 py-2 border border-gray-200 font-racing text-xs text-gray-400 rounded-lg hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {post.raceId == null ? (
+                            <span className="font-racing text-[9px] tracking-widest uppercase bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold">General</span>
+                          ) : (
+                            <span className="font-racing text-[9px] tracking-widest uppercase bg-orange-50 text-orange-500 px-2 py-0.5 rounded-full font-bold">Race #{post.raceId}</span>
+                          )}
+                          <span className="font-racing text-[10px] text-gray-300">#{post.id}</span>
+                        </div>
+                        <h3 className="font-racing text-sm font-bold text-gray-900 leading-tight mb-1">{post.title}</h3>
+                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-2">{post.content}</p>
+                        <div className="flex items-center gap-3 font-racing text-[10px] text-gray-300 tracking-wide">
+                          <span>By {post.username || "Unknown"}</span>
+                          <span>{post.commentCount ?? 0} replies</span>
+                          <span>{post.createdAt ? format(new Date(post.createdAt), "d MMM yyyy") : ""}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          data-testid={`button-forum-edit-${post.id}`}
+                          onClick={() => {
+                            setEditingForumPostId(post.id);
+                            setForumEditForm({ title: post.title, content: post.content });
+                          }}
+                          className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-primary hover:border-primary/30 transition-all"
+                          title="Edit post"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          data-testid={`button-forum-delete-${post.id}`}
+                          onClick={() => {
+                            if (confirm(`Delete "${post.title}"? This will also remove all replies.`)) {
+                              deleteForumPostMutation.mutate(post.id);
+                            }
+                          }}
+                          disabled={deleteForumPostMutation.isPending}
+                          className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-200 transition-all disabled:opacity-50"
+                          title="Delete post"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
