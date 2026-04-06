@@ -177,8 +177,9 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
   const [animating, setAnimating] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const slides = articles && articles.length > 0
-    ? articles.slice(0, 5).map((a: any, i: number) => ({
+  const paddockArticles = articles?.filter((a: any) => a.section === "paddock") ?? [];
+  const slides = paddockArticles.length > 0
+    ? paddockArticles.slice(0, 5).map((a: any, i: number) => ({
         id: a.id,
         slug: a.slug || a.id,
         title: a.title,
