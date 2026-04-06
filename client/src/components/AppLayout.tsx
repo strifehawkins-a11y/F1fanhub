@@ -49,18 +49,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        {/* Checkered flag top stripe */}
-        <div
-          style={{
-            height: 10,
-            backgroundImage:
-              "linear-gradient(45deg,#000 25%,transparent 25%,transparent 75%,#000 75%)," +
-              "linear-gradient(45deg,#000 25%,transparent 25%,transparent 75%,#000 75%)",
-            backgroundSize: "10px 10px",
-            backgroundPosition: "0 0,5px 5px",
-            backgroundColor: "#fff",
-          }}
-        />
+        {/* F1 red top stripe */}
+        <div className="h-[5px] bg-primary w-full" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center h-14 gap-3">
             {/* Logo */}
