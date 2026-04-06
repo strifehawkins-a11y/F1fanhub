@@ -15,7 +15,6 @@ const FALLBACK_SLIDES = [
     excerpt: "Race stats, live forums, quizzes, leaderboards — all in one place for the real Formula 1 fan.",
     tags: ["2026 Season"],
     gradient: "from-gray-950 via-gray-900 to-red-950",
-    accent: "#C41230",
   },
   {
     id: "f2",
@@ -24,7 +23,6 @@ const FALLBACK_SLIDES = [
     excerpt: "Log in daily, post in forums, quiz yourself — and climb the global F1 Paddock leaderboard.",
     tags: ["Rewards"],
     gradient: "from-slate-950 via-slate-900 to-slate-800",
-    accent: "#C41230",
   },
   {
     id: "f3",
@@ -33,7 +31,6 @@ const FALLBACK_SLIDES = [
     excerpt: "An original visual novel: a young driver's journey through her debut Formula 1 season.",
     tags: ["Visual Novel"],
     gradient: "from-zinc-950 via-zinc-900 to-rose-950",
-    accent: "#C41230",
   },
 ];
 
@@ -179,7 +176,7 @@ function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
 
   const paddockArticles = articles?.filter((a: any) => a.section === "paddock") ?? [];
   const slides = paddockArticles.length > 0
-    ? paddockArticles.slice(0, 5).map((a: any, i: number) => ({
+    ? paddockArticles.slice(0, 3).map((a: any, i: number) => ({
         id: a.id,
         slug: a.slug || a.id,
         title: a.title,
