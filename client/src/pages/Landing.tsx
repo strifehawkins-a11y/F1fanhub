@@ -1,10 +1,58 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SiFacebook } from "react-icons/si";
-import { Flag, Eye, EyeOff, Zap, Trophy, MessageSquare, BookOpen, Heart, BarChart2, Menu, X, ChevronRight } from "lucide-react";
-import videoSrc from "@assets/generated_videos/bea-grid-flag.mp4";
+import { Flag, Eye, EyeOff, Zap, Trophy, MessageSquare, BookOpen, Heart, BarChart2, Menu, X, ChevronRight, ChevronLeft, ArrowRight } from "lucide-react";
 
 type Mode = "hero" | "signin" | "signup";
+
+const SLIDE_INTERVAL = 6000;
+
+const FALLBACK_SLIDES = [
+  {
+    id: "f1",
+    slug: null,
+    title: "The Ultimate F1 Fan Experience",
+    excerpt: "Race stats, live forums, quizzes, leaderboards — all in one place for the real Formula 1 fan.",
+    tags: ["2026 Season"],
+    gradient: "from-gray-950 via-gray-900 to-red-950",
+    accent: "#C41230",
+  },
+  {
+    id: "f2",
+    slug: null,
+    title: "Earn 5,000 Points Every Day",
+    excerpt: "Log in daily, post in forums, quiz yourself — and climb the global F1 Paddock leaderboard.",
+    tags: ["Rewards"],
+    gradient: "from-slate-950 via-slate-900 to-slate-800",
+    accent: "#C41230",
+  },
+  {
+    id: "f3",
+    slug: null,
+    title: "Follow Gina Voss — F1 Rookie",
+    excerpt: "An original visual novel: a young driver's journey through her debut Formula 1 season.",
+    tags: ["Visual Novel"],
+    gradient: "from-zinc-950 via-zinc-900 to-rose-950",
+    accent: "#C41230",
+  },
+];
+
+const SLIDE_GRADIENTS = [
+  "from-gray-950 via-gray-900 to-red-950",
+  "from-slate-950 via-slate-900 to-slate-800",
+  "from-zinc-950 via-zinc-900 to-rose-950",
+  "from-neutral-950 via-neutral-900 to-red-900",
+  "from-stone-950 via-stone-900 to-gray-800",
+];
+
+function BrainIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.1-4.79A3 3 0 0 1 3.5 11a3.14 3.14 0 0 1 1-2.22 2.5 2.5 0 0 1 3-3.31A2.5 2.5 0 0 1 9.5 2Z" />
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.1-4.79A3 3 0 0 0 20.5 11a3.14 3.14 0 0 0-1-2.22 2.5 2.5 0 0 0-3-3.31A2.5 2.5 0 0 0 14.5 2Z" />
+    </svg>
+  );
+}
 
 export default function Landing() {
   const { data: authConfig } = useQuery<{ facebookAuthEnabled: boolean }>({
@@ -13,18 +61,14 @@ export default function Landing() {
   const facebookEnabled = authConfig?.facebookAuthEnabled === true;
   const [mode, setMode] = useState<Mode>("hero");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [videoEnded, setVideoEnded] = useState(false);
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
-      {/* F1 red top bar */}
       <div className="h-1 bg-primary w-full flex-shrink-0 z-50 relative" />
 
-      {/* Navigation */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="flex items-center h-16 gap-4">
-            {/* Logo */}
             <button
               onClick={() => { setMode("hero"); setMobileMenuOpen(false); }}
               className="flex items-center gap-3 flex-shrink-0 cursor-pointer group"
@@ -35,7 +79,6 @@ export default function Landing() {
               <span className="font-racing text-gray-900 font-bold tracking-[0.2em] text-sm uppercase hidden sm:block">Paddock</span>
             </button>
 
-            {/* Desktop nav links */}
             <nav className="hidden md:flex items-center gap-0.5 flex-1 ml-2">
               {["News", "Standings", "Forum", "Quiz", "Rankings"].map((label) => (
                 <button
@@ -48,7 +91,6 @@ export default function Landing() {
               ))}
             </nav>
 
-            {/* Auth buttons */}
             <div className="flex items-center gap-2.5 ml-auto">
               <button
                 data-testid="button-signin-nav"
@@ -82,7 +124,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white">
             <div className="max-w-7xl mx-auto px-5 py-3 flex flex-col gap-0.5">
@@ -103,11 +144,8 @@ export default function Landing() {
         )}
       </header>
 
-      {/* Main content */}
       {mode === "hero" ? (
         <HeroContent
-          videoEnded={videoEnded}
-          onVideoEnded={() => setVideoEnded(true)}
           onSignUp={() => setMode("signup")}
           onSignIn={() => setMode("signin")}
           facebookEnabled={facebookEnabled}
@@ -116,7 +154,6 @@ export default function Landing() {
         <AuthPanel mode={mode} onSwitch={setMode} facebookEnabled={facebookEnabled} />
       )}
 
-      {/* Footer */}
       <footer className="mt-auto bg-gray-900 text-white py-8">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
@@ -133,114 +170,189 @@ export default function Landing() {
   );
 }
 
-function HeroContent({
-  videoEnded,
-  onVideoEnded,
-  onSignUp,
-  onSignIn,
-  facebookEnabled,
-}: {
-  videoEnded: boolean;
-  onVideoEnded: () => void;
-  onSignUp: () => void;
-  onSignIn: () => void;
-  facebookEnabled: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+function HeroSlider({ onSignUp }: { onSignUp: () => void }) {
+  const { data: articles } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const [current, setCurrent] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const slides = articles && articles.length > 0
+    ? articles.slice(0, 5).map((a: any, i: number) => ({
+        id: a.id,
+        slug: a.slug || a.id,
+        title: a.title,
+        excerpt: a.excerpt || a.content?.slice(0, 120) + "…",
+        tags: a.tags || [],
+        gradient: SLIDE_GRADIENTS[i % SLIDE_GRADIENTS.length],
+        imageUrl: a.imageUrl || null,
+      }))
+    : FALLBACK_SLIDES;
+
+  const goTo = useCallback((idx: number) => {
+    if (animating) return;
+    setAnimating(true);
+    setCurrent(idx);
+    setTimeout(() => setAnimating(false), 500);
+  }, [animating]);
+
+  const next = useCallback(() => goTo((current + 1) % slides.length), [current, slides.length, goTo]);
+  const prev = useCallback(() => goTo((current - 1 + slides.length) % slides.length), [current, slides.length, goTo]);
+
+  useEffect(() => {
+    if (isHovered) return;
+    timerRef.current = setInterval(next, SLIDE_INTERVAL);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isHovered, next]);
+
+  const slide = slides[current];
 
   return (
-    <div className="flex-1">
-      {/* ── Hero with video background ── */}
-      <section className="relative overflow-hidden bg-white min-h-[560px] md:min-h-[640px] flex items-center">
-        {/* Video layer */}
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          autoPlay
-          muted
-          playsInline
-          onEnded={onVideoEnded}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-          style={{
-            opacity: videoEnded ? 0 : 0.18,
-            transition: "opacity 1.4s ease-out",
-          }}
-        />
-
-        {/* Gradient overlays — maintain readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/92 to-white/60 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent pointer-events-none" />
-
-        {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 py-16 w-full">
-          <div className="flex flex-col md:flex-row md:items-center gap-12">
-            {/* Left: copy */}
-            <div className="flex-1 max-w-xl">
-              <div className="inline-flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-full px-3.5 py-1.5 mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="font-racing text-[10px] text-primary tracking-[0.3em] uppercase font-bold">2026 Season · Live Now</span>
-              </div>
-
-              <h1 className="font-racing text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 tracking-tighter leading-[0.88] mb-6">
-                The Ultimate<br />
-                <span className="text-primary">F1 Fan</span><br />
-                Experience.
-              </h1>
-
-              <p className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
-                Race stats, live forums, quizzes, leaderboards, and Gina's visual novel — all in one place for the real F1 fan.
-              </p>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  data-testid="button-hero-signup"
-                  onClick={onSignUp}
-                  className="flex items-center gap-2.5 px-6 py-3.5 bg-primary text-white font-racing text-sm font-bold tracking-wide rounded-lg hover:bg-red-700 shadow-lg shadow-primary/25 transition-all group"
-                >
-                  Join Free
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-                <button
-                  onClick={onSignIn}
-                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-gray-700 font-racing text-sm font-bold tracking-wide rounded-lg hover:border-primary hover:text-primary transition-all"
-                >
-                  Sign In
-                </button>
-              </div>
-
-              {facebookEnabled && (
-                <a href="/api/auth/facebook" className="inline-block mt-4">
-                  <button
-                    data-testid="button-login-facebook"
-                    className="flex items-center gap-2.5 px-5 py-2.5 rounded-lg font-racing text-sm font-bold bg-[#1877F2] text-white hover:bg-[#1565D8] transition-all"
-                  >
-                    <SiFacebook className="w-4 h-4" />
-                    Continue with Facebook
-                  </button>
-                </a>
-              )}
-
-              <p className="text-xs text-gray-400 mt-4 font-racing tracking-wide">Free forever · No credit card needed</p>
+    <div
+      className="relative w-full overflow-hidden"
+      style={{ minHeight: "76vh" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {slides.map((s, i) => (
+        <div
+          key={s.id}
+          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+        >
+          {s.imageUrl ? (
+            <>
+              <img
+                src={s.imageUrl}
+                alt={s.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+            </>
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient}`}>
+              <div className="absolute inset-0 opacity-5" style={{
+                backgroundImage: `repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)`,
+                backgroundSize: "24px 24px",
+              }} />
+              <div className="absolute top-0 right-0 w-1/2 h-full opacity-10"
+                style={{ background: "radial-gradient(ellipse at right center, #C41230 0%, transparent 70%)" }} />
             </div>
+          )}
+        </div>
+      ))}
 
-            {/* Right: stat cards */}
-            <div className="flex gap-4 md:flex-col flex-shrink-0">
-              {[
-                { label: "Active Fans", value: "12K+" },
-                { label: "Race Threads", value: "340+" },
-                { label: "Quiz Questions", value: "500+" },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex-1 md:flex-none bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm rounded-2xl p-5 text-center min-w-[90px]">
-                  <div className="font-racing text-3xl font-black text-primary">{value}</div>
-                  <div className="font-racing text-[10px] text-gray-400 tracking-[0.2em] uppercase mt-1">{label}</div>
-                </div>
+      <div className="relative z-20 flex flex-col justify-end h-full" style={{ minHeight: "76vh" }}>
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 pb-24 pt-16 w-full">
+          {slide.tags && slide.tags.length > 0 && (
+            <div className="mb-4">
+              <span className="inline-block font-racing text-[10px] tracking-[0.35em] uppercase font-bold text-primary bg-white/10 border border-white/20 backdrop-blur-sm px-3 py-1.5 rounded-sm">
+                {slide.tags[0]}
+              </span>
+            </div>
+          )}
+
+          <h2
+            key={current}
+            className="font-racing text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[0.9] mb-5 max-w-3xl"
+            style={{ animation: "slideUp 0.5s ease forwards" }}
+          >
+            {slide.title}
+          </h2>
+
+          <p className="text-white/70 text-base leading-relaxed max-w-xl mb-8">
+            {slide.excerpt}
+          </p>
+
+          <div className="flex items-center gap-4">
+            {slide.slug ? (
+              <a href={`/articles/${slide.slug}`}>
+                <button
+                  data-testid={`button-slide-read-${slide.id}`}
+                  className="group flex items-center gap-3 px-7 py-3.5 bg-primary text-white font-racing text-sm font-bold tracking-wide hover:bg-red-600 transition-all"
+                >
+                  Read Story
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </a>
+            ) : (
+              <button
+                data-testid="button-slide-join"
+                onClick={onSignUp}
+                className="group flex items-center gap-3 px-7 py-3.5 bg-primary text-white font-racing text-sm font-bold tracking-wide hover:bg-red-600 transition-all"
+              >
+                Join Free
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 sm:px-10">
+            <div className="flex items-stretch">
+              {slides.map((s, i) => (
+                <button
+                  key={s.id}
+                  data-testid={`button-slide-tab-${i}`}
+                  onClick={() => goTo(i)}
+                  className={`flex-1 text-left px-4 py-4 transition-all relative border-r border-white/10 last:border-r-0 group ${
+                    i === current ? "bg-white/10" : "hover:bg-white/5"
+                  }`}
+                >
+                  <div className={`absolute top-0 left-0 right-0 h-0.5 transition-all duration-300 ${i === current ? "bg-primary" : "bg-transparent group-hover:bg-white/20"}`} />
+                  <div className="font-racing text-[9px] tracking-[0.25em] uppercase mb-1 truncate"
+                    style={{ color: i === current ? "#C41230" : "rgba(255,255,255,0.35)" }}>
+                    {s.tags?.[0] || "Feature"}
+                  </div>
+                  <div className={`font-racing text-xs font-bold leading-tight line-clamp-2 transition-colors ${i === current ? "text-white" : "text-white/40 group-hover:text-white/60"}`}>
+                    {s.title}
+                  </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
-      </section>
 
-      {/* ── Red ticker band ── */}
+        <button
+          onClick={prev}
+          data-testid="button-slide-prev"
+          className="absolute left-4 top-1/2 -translate-y-8 z-30 w-10 h-10 flex items-center justify-center bg-black/30 hover:bg-black/60 border border-white/20 text-white transition-all backdrop-blur-sm"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          onClick={next}
+          data-testid="button-slide-next"
+          className="absolute right-4 top-1/2 -translate-y-8 z-30 w-10 h-10 flex items-center justify-center bg-black/30 hover:bg-black/60 border border-white/20 text-white transition-all backdrop-blur-sm"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function HeroContent({
+  onSignUp,
+  onSignIn,
+  facebookEnabled,
+}: {
+  onSignUp: () => void;
+  onSignIn: () => void;
+  facebookEnabled: boolean;
+}) {
+  return (
+    <div className="flex-1">
+      <HeroSlider onSignUp={onSignUp} />
+
       <div className="bg-primary py-3.5 overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-wrap items-center gap-x-8 gap-y-1">
           {["Live Standings", "Race Forum", "F1 Quiz", "Gina's Story", "Daily 5,000 Points Reward", "2026 Calendar"].map((item) => (
@@ -249,7 +361,6 @@ function HeroContent({
         </div>
       </div>
 
-      {/* ── Feature grid ── */}
       <section className="bg-gray-50 py-14">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="mb-10">
@@ -283,7 +394,6 @@ function HeroContent({
         </div>
       </section>
 
-      {/* ── CTA section ── */}
       <section className="bg-white border-t border-gray-100 py-16">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-full px-4 py-1.5 mb-5">
@@ -366,9 +476,7 @@ function AuthPanel({
   return (
     <div className="flex-1 flex items-start justify-center py-12 px-5 bg-gray-50">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-gray-200/60 p-8">
-          {/* Tab switcher */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-8">
             <button
               onClick={() => { onSwitch("signin"); setError(""); }}
@@ -393,7 +501,6 @@ function AuthPanel({
             </button>
           </div>
 
-          {/* Heading */}
           <h1 className="font-racing text-2xl font-black text-gray-900 tracking-tight mb-1">
             {mode === "signup" ? "Join the Paddock" : "Welcome Back"}
           </h1>
@@ -476,7 +583,6 @@ function AuthPanel({
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-gray-100" />
             <span className="text-[11px] text-gray-300 font-racing tracking-widest">OR</span>
@@ -518,14 +624,5 @@ function AuthPanel({
         </div>
       </div>
     </div>
-  );
-}
-
-function BrainIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.96-3 2.5 2.5 0 0 1-1.32-4.24 3 3 0 0 1 .34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.18-1.32z" />
-      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.96-3 2.5 2.5 0 0 0 1.32-4.24 3 3 0 0 0-.34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.18-1.32z" />
-    </svg>
   );
 }
