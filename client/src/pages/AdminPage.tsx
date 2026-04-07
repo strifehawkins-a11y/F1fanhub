@@ -109,6 +109,11 @@ export default function AdminPage() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/articles/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/articles"] }); toast({ title: "Article deleted" }); },
   });
+  const reorderMutation = useMutation({
+    mutationFn: ({ id, sortOrder }: { id: number; sortOrder: number }) =>
+      apiRequest("PATCH", `/api/articles/${id}`, { sortOrder }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/articles"] }),
+  });
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/approve`, {}),
     onSuccess: () => {
@@ -519,45 +524,85 @@ export default function AdminPage() {
           )}
 
           <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="font-racing text-sm font-black text-gray-900">{articles?.length || 0} Published Articles</h2>
+              <span className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">↑↓ drag to reorder carousel</span>
             </div>
             {isLoading ? (
               <div className="p-5 space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-gray-50 rounded-lg animate-pulse" />)}</div>
             ) : articles?.length === 0 ? (
               <div className="text-center py-12 text-gray-400"><Newspaper className="w-10 h-10 mx-auto mb-3 opacity-20" /><p className="font-racing text-sm">No articles yet</p></div>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {articles?.map((article) => (
-                  <div key={article.id} className="px-5 py-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <button onClick={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)} className="flex items-start gap-2 w-full text-left group">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-racing text-sm font-black text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{article.title}</h3>
-                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                              <span className="text-[10px] text-gray-400">{article.publishedAt ? format(new Date(article.publishedAt), "d MMM yyyy") : ""}</span>
-                              <span className={`font-racing text-[9px] px-1.5 py-0.5 rounded font-bold ${article.section === "paddock" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}>
-                                {article.section === "paddock" ? "🏎️ F1 Paddock" : "📰 General News"}
-                              </span>
-                              {article.tags?.slice(0, 2).map((tag: string) => (
-                                <span key={tag} className="font-racing text-[9px] bg-primary/8 text-primary rounded px-1.5 py-0.5">{tag}</span>
-                              ))}
+            ) : (() => {
+              const sorted = [...(articles || [])].sort((a: any, b: any) => {
+                const od = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+                return od !== 0 ? od : new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+              });
+              const moveArticle = (idx: number, dir: -1 | 1) => {
+                const swapIdx = idx + dir;
+                if (swapIdx < 0 || swapIdx >= sorted.length) return;
+                const a = sorted[idx];
+                const b = sorted[swapIdx];
+                const aOrder = a.sortOrder ?? idx;
+                const bOrder = b.sortOrder ?? swapIdx;
+                reorderMutation.mutate({ id: a.id, sortOrder: bOrder });
+                reorderMutation.mutate({ id: b.id, sortOrder: aOrder });
+              };
+              return (
+                <div className="divide-y divide-gray-50">
+                  {sorted.map((article: any, idx: number) => (
+                    <div key={article.id} className="px-5 py-4">
+                      <div className="flex items-start gap-2">
+                        {/* Reorder arrows */}
+                        <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={() => moveArticle(idx, -1)}
+                            disabled={idx === 0 || reorderMutation.isPending}
+                            data-testid={`button-move-up-${article.id}`}
+                            className="p-0.5 rounded text-gray-300 hover:text-primary hover:bg-primary/5 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => moveArticle(idx, 1)}
+                            disabled={idx === sorted.length - 1 || reorderMutation.isPending}
+                            data-testid={`button-move-down-${article.id}`}
+                            className="p-0.5 rounded text-gray-300 hover:text-primary hover:bg-primary/5 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {/* Position badge */}
+                        <div className="w-5 h-5 rounded bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="font-racing text-[9px] font-black text-gray-400">{idx + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <button onClick={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)} className="flex items-start gap-2 w-full text-left group">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-racing text-sm font-black text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{article.title}</h3>
+                              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                                <span className="text-[10px] text-gray-400">{article.publishedAt ? format(new Date(article.publishedAt), "d MMM yyyy") : ""}</span>
+                                <span className={`font-racing text-[9px] px-1.5 py-0.5 rounded font-bold ${article.section === "paddock" ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}>
+                                  {article.section === "paddock" ? "🏎️ F1 Paddock" : "📰 General News"}
+                                </span>
+                                {article.tags?.slice(0, 2).map((tag: string) => (
+                                  <span key={tag} className="font-racing text-[9px] bg-primary/8 text-primary rounded px-1.5 py-0.5">{tag}</span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          {expandedArticle === article.id ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" /> : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />}
-                        </button>
-                        {expandedArticle === article.id && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{article.excerpt}</p>}
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => handleEdit(article)} data-testid={`button-edit-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-gray-700 hover:bg-gray-50 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => deleteMutation.mutate(article.id)} data-testid={`button-delete-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                            {expandedArticle === article.id ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" /> : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />}
+                          </button>
+                          {expandedArticle === article.id && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{article.excerpt}</p>}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => handleEdit(article)} data-testid={`button-edit-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-gray-700 hover:bg-gray-50 transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => deleteMutation.mutate(article.id)} data-testid={`button-delete-article-${article.id}`} className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

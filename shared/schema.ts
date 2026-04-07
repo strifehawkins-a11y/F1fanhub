@@ -75,6 +75,7 @@ export const articles = pgTable("articles", {
   section: text("section").default("news").notNull(),
   slug: text("slug").unique(),
   status: text("status").default("published").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
   publishedAt: timestamp("published_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

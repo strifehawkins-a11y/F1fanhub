@@ -746,10 +746,18 @@ export default function Dashboard() {
     .filter((a: any) => a.section === "paddock")
     .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
+  const regularArticles = (articles || [])
+    .filter((a: any) => a.section !== "paddock")
+    .sort((a: any, b: any) => {
+      const orderDiff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (orderDiff !== 0) return orderDiff;
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
+
   const newsArticles = [
-    ...(articles || []).filter((a: any) => a.section !== "paddock"),
-    ...normalizedForum,
-  ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    ...regularArticles,
+    ...normalizedForum.sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()),
+  ];
 
   const heroArticle = paddockArticles[0] || null;
   const gridArticles = newsArticles;
