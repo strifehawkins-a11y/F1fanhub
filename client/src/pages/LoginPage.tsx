@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Flag, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -113,8 +113,8 @@ export default function LoginPage() {
 
         <a href="/api/login">
           <button className="w-full flex items-center justify-center gap-2 py-3 border border-border rounded-lg font-racing text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all">
-            <Flag className="w-4 h-4" />
-            Continue with Replit
+            <LogIn className="w-4 h-4" />
+            Quick Sign In
           </button>
         </a>
 

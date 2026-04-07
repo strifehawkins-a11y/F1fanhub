@@ -44,12 +44,12 @@ export default function PrivacyPage() {
             </p>
             <p>
               This Privacy Policy explains how we collect, use, and protect information about you when you use F1 Paddock at
-              f1paddock.replit.app and any associated subdomains.
+              www.f1fanhub.net and any associated subdomains.
             </p>
           </Section>
 
           <Section title="2. Information We Collect">
-            <p><strong>Account information:</strong> When you register, we collect your name, email address, and a hashed password. If you sign in via Replit OAuth, we receive your Replit profile information.</p>
+            <p><strong>Account information:</strong> When you register, we collect your name, email address, and a hashed password. If you use our quick sign-in option, we receive basic profile information from your linked account.</p>
             <p><strong>Usage data:</strong> We track article views using an anonymous visitor ID stored in your browser's local storage. This ID is not linked to personal identifiers unless you are logged in.</p>
             <p><strong>Forum &amp; community content:</strong> Any posts, comments, poll votes, or quiz answers you submit are stored in our database and associated with your account.</p>
             <p><strong>Points &amp; rewards:</strong> We store your points balance, lifetime score, and daily claim timestamps to power the rewards system.</p>
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
           <Section title="4. Data Sharing">
             <p>We do not sell your personal data. We share data only with:</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li><strong>Replit Inc.</strong> — our hosting provider. Your data is stored on Replit infrastructure.</li>
+              <li><strong>Our cloud hosting provider</strong> — responsible for infrastructure and data storage on our behalf.</li>
               <li><strong>Google LLC</strong> — for advertising (AdSense) and analytics. Google may set cookies and collect usage data in accordance with their own privacy policy.</li>
             </ul>
           </Section>

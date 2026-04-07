@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SiFacebook } from "react-icons/si";
-import { Flag, Eye, EyeOff, Zap, Trophy, MessageSquare, BookOpen, Heart, BarChart2, Menu, X, ChevronRight, ChevronLeft, ArrowRight } from "lucide-react";
+import { LogIn, Eye, EyeOff, Zap, Trophy, MessageSquare, BookOpen, Heart, BarChart2, Menu, X, ChevronRight, ChevronLeft, ArrowRight } from "lucide-react";
 
 type Mode = "hero" | "signin" | "signup";
 
@@ -424,8 +424,8 @@ function HeroContent({
             </button>
             <a href="/api/login">
               <button className="flex items-center gap-2 px-6 py-3.5 border-2 border-gray-200 text-gray-600 font-racing text-sm font-bold tracking-wide rounded-lg hover:border-gray-300 transition-all">
-                <Flag className="w-4 h-4" />
-                Continue with Replit
+                <LogIn className="w-4 h-4" />
+                Quick Sign In
               </button>
             </a>
           </div>
@@ -608,8 +608,8 @@ function AuthPanel({
             )}
             <a href="/api/login">
               <button className="w-full flex items-center justify-center gap-2.5 py-3 border border-gray-200 rounded-lg font-racing text-sm text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-all bg-white">
-                <Flag className="w-4 h-4" />
-                Continue with Replit
+                <LogIn className="w-4 h-4" />
+                Quick Sign In
               </button>
             </a>
           </div>
