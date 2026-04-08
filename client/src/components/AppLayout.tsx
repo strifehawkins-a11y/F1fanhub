@@ -48,7 +48,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-[9999] bg-white border-b border-gray-100 shadow-sm">
         {/* F1 red top stripe */}
         <div className="h-[5px] bg-primary w-full" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
