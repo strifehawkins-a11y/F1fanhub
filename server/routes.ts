@@ -42,16 +42,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ---- ROBOTS.TXT ----
-  app.get("/robots.txt", (req, res) => {
-    const siteUrl = `https://${req.hostname}`;
+  app.get("/robots.txt", (_req, res) => {
+    const siteUrl = "https://www.f1fanhub.net";
     res.type("text/plain").send(
       `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml\nSitemap: ${siteUrl}/rss.xml\n`
     );
   });
 
   // ---- SITEMAP.XML ----
-  app.get("/sitemap.xml", async (req, res) => {
-    const siteUrl = `https://${req.hostname}`;
+  app.get("/sitemap.xml", async (_req, res) => {
+    const siteUrl = "https://www.f1fanhub.net";
     const today = new Date().toISOString().split("T")[0];
 
     const staticPages = [
@@ -94,8 +94,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ---- RSS FEED ----
-  app.get("/rss.xml", async (req, res) => {
-    const siteUrl = `https://${req.hostname}`;
+  app.get("/rss.xml", async (_req, res) => {
+    const siteUrl = "https://www.f1fanhub.net";
     const escape = (s: string) =>
       (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
@@ -115,7 +115,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       <guid isPermaLink="true">${link}</guid>
       <description>${escape(a.excerpt || "")}</description>
       <pubDate>${pubDate}</pubDate>
-      <author>noreply@f1paddock.replit.app (${escape((a as any).username || "F1 Paddock")})</author>
+      <author>strifehawkins@gmail.com (${escape((a as any).username || "F1 Fan Hub")})</author>
 ${categories}
 ${image}    </item>\n`;
       }
