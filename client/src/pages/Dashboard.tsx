@@ -9,6 +9,7 @@ import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@sh
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import videoSrc from "@assets/generated_videos/bea-grid-flag.mp4";
+import { GinaVossGame } from "@/pages/NovelPage";
 
 function estimateReadTime(content: string) {
   const words = content?.split(/\s+/).length || 0;
@@ -871,6 +872,20 @@ export default function Dashboard() {
             constructors={constructorStandings || []}
           />
           <BeaStoryCard />
+        </div>
+      </div>
+
+      {/* Gina Voss Visual Novel — full-width at bottom of homepage */}
+      <div className="mt-10 pt-6 border-t border-gray-100">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-1 h-7 bg-primary rounded-full" />
+          <div>
+            <h2 className="mcl-heading text-xl text-gray-900">Gina's Story</h2>
+            <p className="mcl-label text-gray-500 mt-0.5">Interactive visual novel · Follow Gina Voss on the F1 grid</p>
+          </div>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+          <GinaVossGame embedded />
         </div>
       </div>
     </div>

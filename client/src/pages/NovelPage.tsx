@@ -118,7 +118,7 @@ function AriaCharacter({ outfit, emotion }: { outfit: string[]; emotion: string 
   const itemGlow = (suitItem as any).glow || "#CC000055";
 
   return (
-    <div className="relative flex flex-col items-center" style={{ width: 170, height: 290 }}>
+    <div className="relative flex flex-col items-center mx-auto" style={{ width: 'clamp(120px, 22vw, 175px)', height: 'clamp(205px, 37vw, 300px)' }}>
       {/* Outfit-coloured rim glow */}
       <div
         className="absolute inset-0 rounded-2xl pointer-events-none z-0"
@@ -330,7 +330,7 @@ function OutfitSelector({ currentOutfit, onSave, profile }: {
   );
 }
 
-export default function NovelPage() {
+export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -468,7 +468,7 @@ export default function NovelPage() {
     <div className="relative">
       {/* Dark scene background */}
       <div
-        className="min-h-screen"
+        className={embedded ? "w-full rounded-2xl overflow-hidden" : "min-h-screen"}
         style={{ background: "linear-gradient(180deg, hsl(0 40% 6%) 0%, hsl(0 0% 8%) 50%, hsl(0 0% 7%) 100%)" }}
       >
         <Tabs defaultValue="story" className="h-full">
@@ -845,4 +845,8 @@ export default function NovelPage() {
     </div>
     </AuthGate>
   );
+}
+
+export default function NovelPage() {
+  return <GinaVossGame />;
 }
