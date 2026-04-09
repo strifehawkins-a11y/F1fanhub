@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { generateAndPublishArticle } from "./autoPublish";
+import { generateAndPublishBatch } from "./autoPublish";
 
 const app = express();
 const httpServer = createServer(app);
@@ -122,9 +122,11 @@ app.use((req, res, next) => {
     log(`Auto-publish scheduled in ${Math.round(msUntil / 60000)} minutes (${next.toISOString()})`, "scheduler");
     setTimeout(async () => {
       try {
-        const result = await generateAndPublishArticle();
-        if (result.success) {
-          log(`Auto-published: "${result.title}"`, "scheduler");
+        const result = await generateAndPublishBatch(5);
+        if (result.submitted.length > 0) {
+          log(`Auto-published batch: ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
+        } else if (result.noContent) {
+          log(`Auto-publish: no fresh content available. ${result.message}`, "scheduler");
         } else {
           log(`Auto-publish skipped: ${result.message}`, "scheduler");
         }

@@ -127,14 +127,23 @@ export default function AdminPage() {
   });
 
   const autoPublishMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/auto-publish", {}),
+    mutationFn: () => apiRequest("POST", "/api/admin/auto-publish", { count: 5 }),
     onSuccess: (data: any) => {
-      if (data?.noContent) {
+      const submitted: string[] = data?.submitted || [];
+      if (submitted.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+        const label = submitted.length === 1
+          ? `"${submitted[0]}"`
+          : `${submitted.length} articles`;
+        toast({
+          title: `${submitted.length} article${submitted.length > 1 ? "s" : ""} submitted for review`,
+          description: `${label} ${submitted.length > 1 ? "are" : "is"} waiting in your Submissions tab.`,
+        });
+        setTab("submissions");
+      } else if (data?.noContent) {
         toast({ title: "Nothing new to generate", description: data.message });
       } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
-        toast({ title: "Submitted for review!", description: `"${data?.title || "Article"}" is in your Submissions tab for approval.` });
-        setTab("submissions");
+        toast({ title: "Auto-publish skipped", description: data?.message || "No new content available." });
       }
     },
     onError: (err: any) => {

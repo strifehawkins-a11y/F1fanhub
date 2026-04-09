@@ -10,7 +10,7 @@ import multer from "multer";
 import { randomUUID } from "crypto";
 import { objectStorageClient } from "./replit_integrations/object_storage";
 import sharp from "sharp";
-import { generateAndPublishArticle } from "./autoPublish";
+import { generateAndPublishBatch } from "./autoPublish";
 
 function getPublicBucketInfo() {
   const raw = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",")[0].trim();
@@ -588,17 +588,16 @@ ${items}  </channel>
       const userId = req.user.claims.sub;
       const admin = await storage.isAdmin(userId);
       if (!admin) return res.status(403).json({ message: "Admin access required" });
-      const result = await generateAndPublishArticle();
-      if (result.success) {
-        res.json({ success: true, title: result.title });
-      } else if (result.noContent) {
-        // No new content to generate — return 200 so the frontend can display an info toast
-        res.json({ success: false, noContent: true, message: result.message });
-      } else {
-        res.status(409).json({ success: false, message: result.message });
+      const count = Number(req.body?.count) || 5;
+      const result = await generateAndPublishBatch(count);
+      if (!result.success && !result.noContent && result.submitted.length === 0) {
+        // Hard rate-limit or error — return 409
+        return res.status(409).json({ success: false, message: result.message });
       }
+      // Success (possibly partial) or no-content — always 200
+      res.json(result);
     } catch (err: any) {
-      res.status(500).json({ message: err?.message || "Auto-publish failed" });
+      res.status(500).json({ message: err?.message || "Auto-publish batch failed" });
     }
   });
 
