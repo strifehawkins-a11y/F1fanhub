@@ -591,6 +591,9 @@ ${items}  </channel>
       const result = await generateAndPublishArticle();
       if (result.success) {
         res.json({ success: true, title: result.title });
+      } else if (result.noContent) {
+        // No new content to generate — return 200 so the frontend can display an info toast
+        res.json({ success: false, noContent: true, message: result.message });
       } else {
         res.status(409).json({ success: false, message: result.message });
       }

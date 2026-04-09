@@ -129,9 +129,13 @@ export default function AdminPage() {
   const autoPublishMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/auto-publish", {}),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
-      toast({ title: "Submitted for review!", description: `"${data?.title || "Article"}" is in your Submissions tab for approval.` });
-      setTab("submissions");
+      if (data?.noContent) {
+        toast({ title: "Nothing new to generate", description: data.message });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+        toast({ title: "Submitted for review!", description: `"${data?.title || "Article"}" is in your Submissions tab for approval.` });
+        setTab("submissions");
+      }
     },
     onError: (err: any) => {
       const msg = err?.message || "Already submitted today or an error occurred.";
