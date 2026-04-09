@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -151,6 +151,14 @@ export default function AdminPage() {
       toast({ title: "Auto-publish skipped", description: msg, variant: "destructive" });
     },
   });
+  const pingMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/ping", {}),
+    onSuccess: (data: any) => {
+      toast({ title: "Search engines pinged", description: data?.message || "Google, Bing and RSS aggregators notified." });
+    },
+    onError: () => toast({ title: "Ping failed", variant: "destructive" }),
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/approve`, {}),
     onSuccess: () => {
@@ -568,6 +576,15 @@ export default function AdminPage() {
               >
                 <Zap className="w-4 h-4 text-yellow-400" />
                 {autoPublishMutation.isPending ? "Publishing..." : "Auto-Publish Today"}
+              </button>
+              <button
+                onClick={() => pingMutation.mutate()}
+                disabled={pingMutation.isPending}
+                data-testid="button-ping-search-engines"
+                className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-racing text-sm font-bold rounded-xl hover:bg-gray-700 transition-all shadow-md shadow-gray-900/20 disabled:opacity-50"
+              >
+                <Radio className="w-4 h-4 text-green-400" />
+                {pingMutation.isPending ? "Pinging..." : "Ping Search Engines"}
               </button>
             </div>
           )}

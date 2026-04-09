@@ -11,6 +11,7 @@ import { randomUUID } from "crypto";
 import { objectStorageClient } from "./replit_integrations/object_storage";
 import sharp from "sharp";
 import { generateAndPublishBatch } from "./autoPublish";
+import { pingAllOnArticlePublish } from "./pinger";
 
 function getPublicBucketInfo() {
   const raw = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",")[0].trim();
@@ -474,6 +475,10 @@ ${items}  </channel>
       const article = await storage.approveArticle(Number(req.params.id));
       if (!article) return res.status(404).json({ message: "Article not found" });
       res.json(article);
+      // Fire pings after responding so approval is never delayed
+      if (article.slug) {
+        pingAllOnArticlePublish(article.slug, article.title).catch(() => {});
+      }
     } catch (err) {
       res.status(500).json({ message: "Failed to approve article" });
     }
@@ -580,6 +585,20 @@ ${items}  </channel>
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  app.post("/api/admin/ping", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      // Ping sitemap + IndexNow for homepage/articles without a specific article slug
+      const { pingAllOnArticlePublish } = await import("./pinger");
+      await pingAllOnArticlePublish("", "F1 Fan Hub – sitemap update");
+      res.json({ success: true, message: "Pinged Google, Bing, IndexNow and RSS aggregators." });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Ping failed" });
     }
   });
 
