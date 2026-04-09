@@ -836,14 +836,10 @@ export default function Dashboard() {
             {races && <NextRaceWidget races={races} profile={profile} />}
             <PollsWidget />
           </div>
-          <MiniStandings
-            drivers={driverStandings || []}
-            constructors={constructorStandings || []}
-          />
         </div>
       </div>
 
-      {/* Gina Voss Visual Novel — full-width at bottom of homepage */}
+      {/* Gina Voss Visual Novel — full-width above standings */}
       <div className="mt-10 pt-6 border-t border-gray-100">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-1 h-7 bg-primary rounded-full" />
@@ -855,6 +851,14 @@ export default function Dashboard() {
         <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
           <GinaVossGame embedded />
         </div>
+      </div>
+
+      {/* Championship Standings — below Gina section */}
+      <div className="mt-10 pt-6 border-t border-gray-100">
+        <MiniStandings
+          drivers={driverStandings || []}
+          constructors={constructorStandings || []}
+        />
       </div>
     </div>
   );
