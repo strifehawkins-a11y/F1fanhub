@@ -1,10 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3, PenLine, Briefcase } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function ViewerCounter() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const es = new EventSource("/api/viewers");
+    es.onmessage = (e) => setCount(Number(e.data));
+    es.onerror = () => es.close();
+    return () => es.close();
+  }, []);
+
+  if (count === null) return null;
+
+  return (
+    <div className="flex items-center gap-1.5" data-testid="viewer-counter">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+      </span>
+      <span className="font-racing text-[10px] text-gray-400 tracking-wide uppercase">
+        {count.toLocaleString()} {count === 1 ? "person" : "people"} online
+      </span>
+    </div>
+  );
+}
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -279,6 +304,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <span className="text-gray-200 text-xs">·</span>
               <span className="font-racing text-[10px] text-gray-400">© {new Date().getFullYear()} F1 Paddock</span>
             </div>
+
+            <ViewerCounter />
 
             {/* Links */}
             <nav className="flex items-center gap-4 flex-wrap">

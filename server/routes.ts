@@ -27,11 +27,32 @@ const upload = multer({
   },
 });
 
+// ---- LIVE VIEWER COUNT (SSE) ----
+const viewers = new Set<any>();
+function broadcastViewerCount() {
+  const data = `data: ${viewers.size}\n\n`;
+  viewers.forEach(res => { try { res.write(data); } catch {} });
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
   setupLocalAuth(app);
   setupFacebookAuth(app);
+
+  app.get("/api/viewers", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+    viewers.add(res);
+    broadcastViewerCount();
+    req.on("close", () => {
+      viewers.delete(res);
+      broadcastViewerCount();
+    });
+  });
 
   // ---- GOOGLE SEARCH CONSOLE VERIFICATION ----
   app.get("/google839aabed702b84d7.html", (_req, res) => {
