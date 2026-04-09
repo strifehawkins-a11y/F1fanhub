@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
-import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Play, Edit2, X, Save, BarChart3, ChevronLeft } from "lucide-react";
+import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Edit2, X, Save, BarChart3, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
@@ -188,37 +188,6 @@ function PollsWidget() {
   );
 }
 
-function BeaStoryCard() {
-  return (
-    <Link href="/novel">
-      <div
-        data-testid="card-bea-story"
-        className="relative rounded-xl overflow-hidden cursor-pointer group"
-        style={{ background: "linear-gradient(135deg, #1a0008 0%, #3d0015 50%, #7d0025 100%)" }}
-      >
-        {/* Shimmer accent bar */}
-        <div className="h-0.5 bg-gradient-to-r from-primary via-red-400 to-primary/20" />
-
-        <div className="p-4">
-          <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-2.5 py-1 mb-3">
-            <Play className="w-2.5 h-2.5 text-white fill-white" />
-            <span className="font-racing text-[9px] text-white/90 tracking-widest uppercase font-bold">Gina's Season · 2026</span>
-          </div>
-          <h3 className="font-racing text-sm font-black text-white leading-snug mb-1 group-hover:text-primary/90 transition-colors">
-            Follow Gina Voss<br />on the F1 grid
-          </h3>
-          <p className="text-white/50 text-[11px] mb-3">Visual novel · New episodes weekly</p>
-          <div className="flex items-center justify-between">
-            <span className="font-racing text-[10px] text-white/40">Chapter 1 available now</span>
-            <div className="flex items-center gap-1 font-racing text-[10px] font-bold text-primary bg-primary/20 rounded-full px-3 py-1">
-              Play Story <ChevronRight className="w-3 h-3" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all";
 const labelCls = "font-racing text-[9px] text-gray-400 tracking-widest uppercase block mb-1";
@@ -871,7 +840,6 @@ export default function Dashboard() {
             drivers={driverStandings || []}
             constructors={constructorStandings || []}
           />
-          <BeaStoryCard />
         </div>
       </div>
 
