@@ -98,7 +98,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       for (const a of articles) {
         const slug = (a as any).slug || a.id;
         const lastmod = a.updatedAt ? new Date(a.updatedAt).toISOString().split("T")[0] : today;
-        articleEntries += `  <url>\n    <loc>${siteUrl}/articles/${slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+        const imageUrl = (a as any).imageUrl;
+        const imageTag = imageUrl
+          ? `\n    <image:image>\n      <image:loc>${imageUrl}</image:loc>\n      <image:title>${(a.title || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</image:title>\n      <image:caption>${((a as any).excerpt || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</image:caption>\n    </image:image>`
+          : "";
+        articleEntries += `  <url>\n    <loc>${siteUrl}/articles/${slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>${imageTag}\n  </url>\n`;
       }
     } catch {}
     try {
@@ -112,7 +116,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       `  <url>\n    <loc>${siteUrl}${p.url}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`
     ).join("\n");
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${articleEntries}${forumEntries}</urlset>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${staticEntries}\n${articleEntries}${forumEntries}</urlset>`;
     res.type("application/xml").send(xml);
   });
 
