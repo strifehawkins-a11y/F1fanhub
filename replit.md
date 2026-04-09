@@ -10,8 +10,11 @@ A mobile-first Formula 1 statistics and social app with a cartoony "Hades"-inspi
 - **Articles** — Admin-publishable articles with comments, readable by all users
 - **Leaderboard** — Top pilots ranked by lifetime points (quiz scores + daily rewards)
 - **Aria's Visual Novel** — Dating sim story about rookie F1 driver Aria Voss. 5 chapters, spend points to unlock better choices, dress her up with outfit items
-- **Admin Panel** — Admins can create/edit/delete articles. Access at /admin
+- **Admin Panel** — Admins can create/edit/delete articles, trigger auto-publish. Access at /admin
+- **Auto-Publish** — Daily scheduler fires at 07:00 UTC generating race previews, standings digests, or evergreen F1 articles based on live DB data. Also triggerable manually from admin panel
 - **Daily Points** — Claim 5,000 points every 24 hours
+- **Live Viewer Counter** — SSE-based real-time connected viewer count in footer
+- **RSS Feed / Sitemap / robots.txt** — All hardcoded to https://www.f1fanhub.net
 
 ## Tech Stack
 - **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui

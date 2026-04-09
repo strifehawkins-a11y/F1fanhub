@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { generateAndPublishArticle } from "./autoPublish";
 
 const app = express();
 const httpServer = createServer(app);
@@ -109,4 +110,29 @@ app.use((req, res, next) => {
   };
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
+
+  // Daily auto-publish scheduler — fires at 07:00 UTC every day
+  function scheduleNextAutoPublish() {
+    const now = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 7, 0, 0, 0));
+    if (next.getTime() <= now.getTime()) {
+      next.setUTCDate(next.getUTCDate() + 1);
+    }
+    const msUntil = next.getTime() - now.getTime();
+    log(`Auto-publish scheduled in ${Math.round(msUntil / 60000)} minutes (${next.toISOString()})`, "scheduler");
+    setTimeout(async () => {
+      try {
+        const result = await generateAndPublishArticle();
+        if (result.success) {
+          log(`Auto-published: "${result.title}"`, "scheduler");
+        } else {
+          log(`Auto-publish skipped: ${result.message}`, "scheduler");
+        }
+      } catch (err: any) {
+        log(`Auto-publish error: ${err?.message}`, "scheduler");
+      }
+      scheduleNextAutoPublish();
+    }, msUntil);
+  }
+  scheduleNextAutoPublish();
 })();

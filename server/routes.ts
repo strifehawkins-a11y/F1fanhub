@@ -10,6 +10,7 @@ import multer from "multer";
 import { randomUUID } from "crypto";
 import { objectStorageClient } from "./replit_integrations/object_storage";
 import sharp from "sharp";
+import { generateAndPublishArticle } from "./autoPublish";
 
 function getPublicBucketInfo() {
   const raw = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",")[0].trim();
@@ -554,6 +555,22 @@ ${items}  </channel>
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ message: "Failed to delete article" });
+    }
+  });
+
+  app.post("/api/admin/auto-publish", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const result = await generateAndPublishArticle();
+      if (result.success) {
+        res.json({ success: true, title: result.title });
+      } else {
+        res.status(409).json({ success: false, message: result.message });
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Auto-publish failed" });
     }
   });
 

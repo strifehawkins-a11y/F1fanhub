@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -113,6 +113,17 @@ export default function AdminPage() {
     mutationFn: ({ id, sortOrder }: { id: number; sortOrder: number }) =>
       apiRequest("PATCH", `/api/articles/${id}`, { sortOrder }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/articles"] }),
+  });
+  const autoPublishMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/auto-publish", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      toast({ title: "Auto-published!", description: data?.title || "New article published successfully." });
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "Already published today or an error occurred.";
+      toast({ title: "Auto-publish skipped", description: msg, variant: "destructive" });
+    },
   });
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/approve`, {}),
@@ -517,10 +528,21 @@ export default function AdminPage() {
               </div>
             </div>
           ) : (
-            <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); }} data-testid="button-new-article" className="flex items-center gap-2 px-5 py-3 bg-primary text-white font-racing text-sm font-bold rounded-xl hover:bg-red-700 transition-all shadow-md shadow-primary/20">
-              <Plus className="w-4 h-4" />
-              Write New Article
-            </button>
+            <div className="flex gap-3 flex-wrap">
+              <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); }} data-testid="button-new-article" className="flex items-center gap-2 px-5 py-3 bg-primary text-white font-racing text-sm font-bold rounded-xl hover:bg-red-700 transition-all shadow-md shadow-primary/20">
+                <Plus className="w-4 h-4" />
+                Write New Article
+              </button>
+              <button
+                onClick={() => autoPublishMutation.mutate()}
+                disabled={autoPublishMutation.isPending}
+                data-testid="button-auto-publish"
+                className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-racing text-sm font-bold rounded-xl hover:bg-gray-700 transition-all shadow-md shadow-gray-900/20 disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4 text-yellow-400" />
+                {autoPublishMutation.isPending ? "Publishing..." : "Auto-Publish Today"}
+              </button>
+            </div>
           )}
 
           <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
