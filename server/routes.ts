@@ -606,6 +606,19 @@ ${items}  </channel>
     }
   });
 
+  app.post("/api/admin/sync-standings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const { syncStandingsFromAPI } = await import("./syncStandings");
+      const result = await syncStandingsFromAPI("current");
+      res.json({ success: true, message: `Standings updated: ${result.drivers} drivers, ${result.constructors} constructors.`, ...result });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Sync failed" });
+    }
+  });
+
   app.post("/api/admin/auto-publish", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -97,8 +97,10 @@ export interface IStorage {
   // Standings
   getDriverStandings(season?: number): Promise<DriverStanding[]>;
   updateDriverStanding(id: number, data: Partial<DriverStanding>): Promise<DriverStanding | undefined>;
+  replaceDriverStandings(season: number, rows: Omit<DriverStanding, "id">[]): Promise<void>;
   getConstructorStandings(season?: number): Promise<ConstructorStanding[]>;
   updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined>;
+  replaceConstructorStandings(season: number, rows: Omit<ConstructorStanding, "id">[]): Promise<void>;
 
   // Race updates
   updateRace(id: number, data: Partial<Race>): Promise<Race | undefined>;
@@ -777,6 +779,20 @@ export class DatabaseStorage implements IStorage {
   async updateConstructorStanding(id: number, data: Partial<ConstructorStanding>): Promise<ConstructorStanding | undefined> {
     const [result] = await db.update(constructorStandings).set(data).where(eq(constructorStandings.id, id)).returning();
     return result;
+  }
+
+  async replaceDriverStandings(season: number, rows: Omit<DriverStanding, "id">[]): Promise<void> {
+    await db.delete(driverStandings).where(eq(driverStandings.season, season));
+    if (rows.length > 0) {
+      await db.insert(driverStandings).values(rows as any);
+    }
+  }
+
+  async replaceConstructorStandings(season: number, rows: Omit<ConstructorStanding, "id">[]): Promise<void> {
+    await db.delete(constructorStandings).where(eq(constructorStandings.season, season));
+    if (rows.length > 0) {
+      await db.insert(constructorStandings).values(rows as any);
+    }
   }
 
   private async buildPollWithVotes(poll: Poll) {

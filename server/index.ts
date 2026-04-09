@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { generateAndPublishBatch } from "./autoPublish";
+import { syncStandingsFromAPI } from "./syncStandings";
 
 const app = express();
 const httpServer = createServer(app);
@@ -137,4 +138,26 @@ app.use((req, res, next) => {
     }, msUntil);
   }
   scheduleNextAutoPublish();
+
+  // Weekly standings sync — fires every Monday at 08:00 UTC (after race weekends)
+  function scheduleNextStandingsSync() {
+    const now = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 0, 0, 0));
+    // Advance to next Monday
+    const daysUntilMonday = (8 - next.getUTCDay()) % 7 || 7;
+    next.setUTCDate(next.getUTCDate() + (next.getTime() <= now.getTime() ? daysUntilMonday : daysUntilMonday === 7 ? 0 : daysUntilMonday));
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 7);
+    const msUntil = next.getTime() - now.getTime();
+    log(`Standings sync scheduled in ${Math.round(msUntil / 3600000)}h (${next.toISOString()})`, "scheduler");
+    setTimeout(async () => {
+      try {
+        const result = await syncStandingsFromAPI("current");
+        log(`Standings auto-synced: ${result.drivers} drivers, ${result.constructors} constructors`, "scheduler");
+      } catch (err: any) {
+        log(`Standings sync error: ${err?.message}`, "scheduler");
+      }
+      scheduleNextStandingsSync();
+    }, msUntil);
+  }
+  scheduleNextStandingsSync();
 })();

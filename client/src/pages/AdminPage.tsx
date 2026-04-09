@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -157,6 +157,16 @@ export default function AdminPage() {
       toast({ title: "Search engines pinged", description: data?.message || "Google, Bing and RSS aggregators notified." });
     },
     onError: () => toast({ title: "Ping failed", variant: "destructive" }),
+  });
+
+  const syncStandingsMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/sync-standings", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/standings/drivers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/standings/constructors"] });
+      toast({ title: "Standings synced", description: data?.message || "Driver and constructor standings updated from live data." });
+    },
+    onError: (err: any) => toast({ title: "Sync failed", description: err?.message || "Could not fetch standings.", variant: "destructive" }),
   });
 
   const approveMutation = useMutation({
@@ -585,6 +595,15 @@ export default function AdminPage() {
               >
                 <Radio className="w-4 h-4 text-green-400" />
                 {pingMutation.isPending ? "Pinging..." : "Ping Search Engines"}
+              </button>
+              <button
+                onClick={() => syncStandingsMutation.mutate()}
+                disabled={syncStandingsMutation.isPending}
+                data-testid="button-sync-standings"
+                className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-racing text-sm font-bold rounded-xl hover:bg-gray-700 transition-all shadow-md shadow-gray-900/20 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 text-blue-400 ${syncStandingsMutation.isPending ? "animate-spin" : ""}`} />
+                {syncStandingsMutation.isPending ? "Syncing..." : "Sync Standings"}
               </button>
             </div>
           )}
