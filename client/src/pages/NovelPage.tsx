@@ -1,17 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, ShoppingBag, ArrowLeft, Check, Wand2, RotateCcw, AlertTriangle } from "lucide-react";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Heart, Zap, ChevronRight, Lock, Star, Sparkles, Check, Wand2, RotateCcw, AlertTriangle, Shield, Trophy, Skull, LogIn } from "lucide-react";
+import { useLocation, Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { UserProfile } from "@shared/schema";
 import { NOVEL_CHAPTERS, OUTFIT_CATEGORIES } from "@/data/novelStory";
-import AuthGate from "@/components/AuthGate";
+import type { Choice, ChoiceOutcome } from "@/data/novelStory";
+import { useAuth } from "@/hooks/use-auth";
 
 // Suit portrait images — one per racing suit
 import beaSuitDefault   from "@assets/generated_images/bea-suit-default.png";
@@ -334,18 +332,45 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  // Outfit state
   const [currentOutfit, setCurrentOutfit] = useState<string[]>(["suit_default", "casual_default", "helmet_default", "hair_default", "acc_default"]);
+
+  // Typing / UI state
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [choiceResponse, setChoiceResponse] = useState<string | null>(null);
   const [showChapterEnd, setShowChapterEnd] = useState(false);
+  const [pendingChoice, setPendingChoice] = useState<Choice | null>(null);
 
-  const { data: progress, isLoading } = useQuery<any>({
-    queryKey: ["/api/novel/progress"],
+  // Roguelite state (always local — session-based)
+  const [careerPoints, setCareerPoints] = useState(0);
+  const [careerLives, setCareerLives] = useState(3);
+  const [outcomeOverlay, setOutcomeOverlay] = useState<{
+    type: ChoiceOutcome;
+    title: string;
+    text: string;
+    pointsEarned: number;
+  } | null>(null);
+  const pendingAdvanceRef = useRef<"next_scene" | "chapter_end" | "story_end" | null>(null);
+
+  // Guest progress (local state when not logged in)
+  const [guestProgress, setGuestProgress] = useState({
+    currentChapter: 1,
+    currentScene: 0,
+    completedChoices: [] as string[],
+    affectionLevel: 0,
   });
 
+  // API progress (logged-in only)
+  const { data: apiProgress, isLoading: apiLoading } = useQuery<any>({
+    queryKey: ["/api/novel/progress"],
+    enabled: isAuthenticated,
+  });
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/profile"],
+    enabled: isAuthenticated,
   });
 
   const progressMutation = useMutation({
@@ -354,8 +379,8 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
       queryClient.invalidateQueries({ queryKey: ["/api/novel/progress"] });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     },
-    onError: (err: any) => {
-      toast({ title: "Not enough points!", description: "Earn points by taking quizzes or claiming your daily reward.", variant: "destructive" });
+    onError: () => {
+      toast({ title: "Error saving progress", variant: "destructive" });
     },
   });
 
@@ -363,26 +388,28 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
     mutationFn: () => apiRequest("DELETE", "/api/novel/progress"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/novel/progress"] });
-      toast({ title: "Story Reset", description: "Gina's story has been restarted from the beginning." });
-    },
-    onError: () => {
-      toast({ title: "Reset Failed", description: "Could not reset story progress.", variant: "destructive" });
+      toast({ title: "Story Reset", description: "Starting over!" });
     },
   });
 
-  const currentChapterId = progress?.currentChapter || 1;
-  const currentSceneId = progress?.currentScene || 0;
-  const completedChoices: string[] = progress?.completedChoices || [];
-  const affectionLevel = progress?.affectionLevel || 0;
+  // Unified progress
+  const rawProgress = isAuthenticated ? apiProgress : guestProgress;
+  const currentChapterId = rawProgress?.currentChapter || 1;
+  const currentSceneId = rawProgress?.currentScene || 0;
+  const completedChoices: string[] = rawProgress?.completedChoices || [];
+  const affectionLevel = rawProgress?.affectionLevel || 0;
 
   const chapter = NOVEL_CHAPTERS.find((c) => c.id === currentChapterId);
   const scene = chapter?.scenes[currentSceneId];
+  const isLastScene = currentSceneId >= (chapter?.scenes.length || 1) - 1;
+  const isLastChapter = currentChapterId >= NOVEL_CHAPTERS.length;
+  const nextChapter = NOVEL_CHAPTERS.find(c => c.id === currentChapterId + 1);
 
+  // Sync outfit from API progress
   useEffect(() => {
-    if (progress?.selectedOutfit?.length) {
-      setCurrentOutfit(progress.selectedOutfit);
-    }
-  }, [progress?.selectedOutfit]);
+    const savedOutfit = isAuthenticated ? apiProgress?.selectedOutfit : null;
+    if (savedOutfit?.length) setCurrentOutfit(savedOutfit);
+  }, [apiProgress?.selectedOutfit, isAuthenticated]);
 
   // Typewriter effect
   useEffect(() => {
@@ -405,9 +432,36 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
     return () => clearInterval(timer);
   }, [scene?.id, scene?.text, currentChapterId, currentSceneId]);
 
-  const isLastScene = currentSceneId >= (chapter?.scenes.length || 1) - 1;
-  const isLastChapter = currentChapterId >= NOVEL_CHAPTERS.length;
-  const nextChapter = NOVEL_CHAPTERS.find(c => c.id === currentChapterId + 1);
+  // Scene advance helpers
+  const doAdvanceScene = () => {
+    if (isAuthenticated) {
+      progressMutation.mutate({ advanceScene: true });
+    } else {
+      setGuestProgress(prev => ({ ...prev, currentScene: prev.currentScene + 1 }));
+    }
+  };
+
+  const doAdvanceChapter = () => {
+    if (isAuthenticated) {
+      progressMutation.mutate({ advanceChapter: true });
+    } else {
+      setGuestProgress(prev => ({ ...prev, currentChapter: prev.currentChapter + 1, currentScene: 0 }));
+    }
+  };
+
+  const doReset = () => {
+    setCareerPoints(0);
+    setCareerLives(3);
+    setOutcomeOverlay(null);
+    setPendingChoice(null);
+    setChoiceResponse(null);
+    setShowChapterEnd(false);
+    if (isAuthenticated) {
+      resetMutation.mutate();
+    } else {
+      setGuestProgress({ currentChapter: 1, currentScene: 0, completedChoices: [], affectionLevel: 0 });
+    }
+  };
 
   const handleAdvance = () => {
     if (isTyping) {
@@ -416,44 +470,136 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
       return;
     }
     if (!scene?.choices) {
-      if (isLastScene && !isLastChapter) {
+      if (isLastScene) {
         setShowChapterEnd(true);
-      } else if (!isLastScene) {
-        progressMutation.mutate({ advanceScene: true });
-      } else if (isLastScene && isLastChapter) {
-        setShowChapterEnd(true);
+      } else {
+        doAdvanceScene();
       }
     }
   };
 
   const handleAdvanceChapter = () => {
     setShowChapterEnd(false);
-    progressMutation.mutate({ advanceChapter: true });
+    doAdvanceChapter();
   };
 
-  const handleChoice = (choice: any) => {
+  const handleChoice = (choice: Choice) => {
     if (completedChoices.includes(choice.id)) return;
+
+    // For logged-in users, spend store points; for guests, all choices are free
     setChoiceResponse(choice.response);
-    progressMutation.mutate({
-      choiceKey: choice.id,
-      pointCost: choice.pointCost,
-      affectionGain: choice.affectionGain,
-    });
+    setPendingChoice(choice);
+
+    // Track choice in progress
+    if (isAuthenticated) {
+      progressMutation.mutate({
+        choiceKey: choice.id,
+        affectionGain: choice.affectionGain,
+        pointCost: 0, // no store-point cost in roguelite mode
+      });
+    } else {
+      setGuestProgress(prev => ({
+        ...prev,
+        completedChoices: [...prev.completedChoices, choice.id],
+        affectionLevel: prev.affectionLevel + choice.affectionGain,
+      }));
+    }
   };
 
   const handleContinueAfterChoice = () => {
+    const choice = pendingChoice;
+    setPendingChoice(null);
     setChoiceResponse(null);
-    if (isLastScene && !isLastChapter) {
-      setShowChapterEnd(true);
-    } else if (!isLastScene) {
-      progressMutation.mutate({ advanceScene: true });
-    } else if (isLastScene && isLastChapter) {
-      setShowChapterEnd(true);
+
+    if (!choice) {
+      triggerAdvance();
+      return;
     }
+
+    // Store where we need to go after the overlay
+    pendingAdvanceRef.current = isLastScene ? (isLastChapter ? "story_end" : "chapter_end") : "next_scene";
+
+    // Award career points
+    const pts = choice.pointReward || 0;
+    if (pts > 0) setCareerPoints(prev => prev + pts);
+
+    if (choice.outcome === "gameover") {
+      setCareerLives(0);
+      setOutcomeOverlay({
+        type: "gameover",
+        title: choice.outcomeTitle || "Career Derailed",
+        text: choice.outcomeText || "This choice ended the run.",
+        pointsEarned: 0,
+      });
+    } else if (choice.outcome === "setback") {
+      setCareerLives(prev => Math.max(0, prev - 1));
+      setOutcomeOverlay({
+        type: "setback",
+        title: choice.outcomeTitle || "Costly Mistake",
+        text: choice.outcomeText || "The career takes a hit.",
+        pointsEarned: pts,
+      });
+    } else if (choice.outcome === "triumph") {
+      setOutcomeOverlay({
+        type: "triumph",
+        title: choice.outcomeTitle || "Brilliant!",
+        text: choice.outcomeText || "Perfect call.",
+        pointsEarned: pts,
+      });
+    } else {
+      // 'good' — no overlay, advance directly
+      triggerAdvance();
+    }
+  };
+
+  const dismissOverlay = () => {
+    const target = pendingAdvanceRef.current;
+    pendingAdvanceRef.current = null;
+    setOutcomeOverlay(null);
+    if (target === "next_scene") doAdvanceScene();
+    else if (target === "chapter_end" || target === "story_end") setShowChapterEnd(true);
+  };
+
+  const triggerAdvance = () => {
+    if (isLastScene) setShowChapterEnd(true);
+    else doAdvanceScene();
   };
 
   const maxAffection = 500;
   const affectionPct = Math.min(100, (affectionLevel / maxAffection) * 100);
+  const isLoading = isAuthenticated && apiLoading;
+
+  // Outcome overlay colours
+  const overlayConfig = {
+    triumph: {
+      bg: "linear-gradient(135deg, rgba(0,60,0,0.97) 0%, rgba(10,80,10,0.99) 100%)",
+      border: "#22c55e",
+      icon: <Trophy className="w-10 h-10 text-yellow-400" />,
+      titleColor: "text-yellow-300",
+      btnBg: "bg-green-600 hover:bg-green-500",
+    },
+    good: {
+      bg: "linear-gradient(135deg, rgba(0,40,80,0.97) 0%, rgba(0,60,100,0.99) 100%)",
+      border: "#3b82f6",
+      icon: <Star className="w-10 h-10 text-blue-300" />,
+      titleColor: "text-blue-200",
+      btnBg: "bg-blue-600 hover:bg-blue-500",
+    },
+    setback: {
+      bg: "linear-gradient(135deg, rgba(80,30,0,0.97) 0%, rgba(100,40,0,0.99) 100%)",
+      border: "#f97316",
+      icon: <AlertTriangle className="w-10 h-10 text-orange-400" />,
+      titleColor: "text-orange-300",
+      btnBg: "bg-orange-600 hover:bg-orange-500",
+    },
+    gameover: {
+      bg: "linear-gradient(135deg, rgba(60,0,0,0.99) 0%, rgba(20,0,0,1) 100%)",
+      border: "#ef4444",
+      icon: <Skull className="w-10 h-10 text-red-400" />,
+      titleColor: "text-red-300",
+      btnBg: "bg-red-700 hover:bg-red-600",
+    },
+  };
 
   if (isLoading) {
     return (
@@ -464,39 +610,130 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
   }
 
   return (
-    <AuthGate feature="Gina's Story" description="Sign in to read Gina Voss's visual novel, customise her outfits and unlock exclusive chapters.">
     <div className="relative">
       {/* Dark scene background */}
       <div
         className={embedded ? "w-full rounded-2xl overflow-hidden" : "min-h-screen"}
         style={{ background: "linear-gradient(180deg, hsl(0 40% 6%) 0%, hsl(0 0% 8%) 50%, hsl(0 0% 7%) 100%)" }}
       >
+
+        {/* Outcome overlay */}
+        {outcomeOverlay && (
+          <div
+            className="absolute inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)" }}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border-2 p-8 text-center space-y-5"
+              style={{
+                background: overlayConfig[outcomeOverlay.type].bg,
+                borderColor: overlayConfig[outcomeOverlay.type].border,
+                boxShadow: `0 0 60px 10px ${overlayConfig[outcomeOverlay.type].border}44`,
+              }}
+            >
+              <div className="flex justify-center">{overlayConfig[outcomeOverlay.type].icon}</div>
+              <div>
+                <p className={`font-racing text-2xl font-black tracking-wider ${overlayConfig[outcomeOverlay.type].titleColor}`}>
+                  {outcomeOverlay.title}
+                </p>
+                {outcomeOverlay.text && (
+                  <p className="text-white/70 text-sm mt-2 leading-relaxed">{outcomeOverlay.text}</p>
+                )}
+              </div>
+
+              {outcomeOverlay.pointsEarned > 0 && (
+                <div className="flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5">
+                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <span className="font-racing text-lg font-black text-yellow-300">
+                    +{outcomeOverlay.pointsEarned.toLocaleString()} pts
+                  </span>
+                </div>
+              )}
+
+              {/* Lives remaining */}
+              <div className="flex items-center justify-center gap-1.5">
+                {[1,2,3].map(i => (
+                  <div
+                    key={i}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${i <= careerLives ? "bg-primary" : "bg-white/10"}`}
+                  >
+                    <Shield className={`w-3 h-3 ${i <= careerLives ? "text-white" : "text-white/20"}`} />
+                  </div>
+                ))}
+                <span className="font-racing text-xs text-white/40 ml-1">lives remaining</span>
+              </div>
+
+              {outcomeOverlay.type === "gameover" ? (
+                <div className="space-y-3">
+                  <p className="text-white/50 text-xs">Your career ended here. But every champion has a false start.</p>
+                  <button
+                    data-testid="button-restart-gameover"
+                    onClick={() => { setOutcomeOverlay(null); doReset(); }}
+                    className="w-full py-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-racing text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Restart Career
+                  </button>
+                </div>
+              ) : (
+                <button
+                  data-testid="button-dismiss-outcome"
+                  onClick={dismissOverlay}
+                  className={`w-full py-3 rounded-xl text-white font-racing text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 ${overlayConfig[outcomeOverlay.type].btnBg}`}
+                >
+                  Continue Story <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="story" className="h-full">
           {/* Tab header */}
           <div className="sticky top-0 z-10 px-4 pt-4 pb-2" style={{ background: "hsl(0 40% 6%)" }}>
+            {/* Guest banner */}
+            {!isAuthenticated && (
+              <div className="flex items-center justify-between mb-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-white/50 text-[11px] font-racing">Playing as guest — progress not saved</p>
+                <Link href="/login">
+                  <button className="flex items-center gap-1 text-primary text-[11px] font-racing font-bold hover:text-primary/80 transition-colors">
+                    <LogIn className="w-3 h-3" /> Sign in
+                  </button>
+                </Link>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-3">
               <h1 className="font-racing text-xl font-black text-white">Gina's Story</h1>
               <div className="flex items-center gap-3">
+                {/* Career points */}
+                <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-full px-2 py-1">
+                  <Zap className="w-3 h-3 text-yellow-400" />
+                  <span className="font-racing text-xs text-yellow-300 font-bold">{careerPoints.toLocaleString()}</span>
+                </div>
+                {/* Lives */}
+                <div className="flex items-center gap-1">
+                  {[1,2,3].map(i => (
+                    <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center ${i <= careerLives ? "bg-primary/80" : "bg-white/10"}`}>
+                      <Shield className={`w-2.5 h-2.5 ${i <= careerLives ? "text-white" : "text-white/20"}`} />
+                    </div>
+                  ))}
+                </div>
+                {/* Affection */}
                 <div className="flex items-center gap-2">
                   <Heart className="w-4 h-4 text-pink-500" />
-                  <div className="w-24 h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-pink-600 to-pink-400 transition-all duration-500"
                       style={{ width: `${affectionPct}%` }}
                     />
                   </div>
-                  <span className="text-xs font-racing text-pink-400 font-bold">{affectionLevel}</span>
                 </div>
                 <button
                   data-testid="button-reset-story"
-                  onClick={() => {
-                    if (confirm("Reset Gina's story to the beginning? Your affection level and choices will be lost.")) {
-                      resetMutation.mutate();
-                    }
-                  }}
+                  onClick={() => { if (confirm("Restart Gina's story? All progress and career points will be lost.")) doReset(); }}
                   disabled={resetMutation.isPending}
                   className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
-                  title="Reset Story"
+                  title="Restart"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -518,13 +755,11 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
 
           {/* Story Tab */}
           <TabsContent value="story" className="mt-0 px-4 pb-24">
-            {/* Points display */}
+            {/* Progress */}
             <div className="flex items-center justify-between py-2 mb-3">
               <div className="flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-yellow-500" />
-                <span className="font-racing text-xs text-yellow-400 font-bold">
-                  {(profile?.totalPoints || 0).toLocaleString()} pts
-                </span>
+                <span className="font-racing text-[10px] text-white/30 tracking-widest uppercase">Career Points</span>
+                <span className="font-racing text-xs text-yellow-400 font-bold">{careerPoints.toLocaleString()}</span>
               </div>
               <Badge variant="outline" className="text-[10px] font-racing border-white/20 text-white/60">
                 Ch.{currentChapterId} · Scene {currentSceneId + 1}
@@ -536,7 +771,6 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
               <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
                 style={{ background: "linear-gradient(0deg, hsl(0 40% 6%), transparent)" }}
               />
-              {/* Stage lights */}
               <div className="absolute top-0 left-1/4 w-2 h-20 pointer-events-none opacity-20"
                 style={{ background: "linear-gradient(180deg, hsl(0 84% 45%), transparent)" }}
               />
@@ -553,39 +787,42 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
                   Chapter {chapter.id}
                 </p>
                 <p className="font-racing text-sm font-black text-white/80">{chapter.title}</p>
+                {scene.isCritical && (
+                  <div className="inline-flex items-center gap-1.5 mt-1 bg-red-500/10 border border-red-500/30 rounded-full px-2.5 py-0.5">
+                    <Skull className="w-2.5 h-2.5 text-red-400" />
+                    <span className="font-racing text-[9px] text-red-400 tracking-widest uppercase font-bold">Career Decision</span>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Story complete / corrupted progress recovery */}
+            {/* No scene / story complete */}
             {!scene && (
               <div className="rounded-xl border border-white/10 p-6 mb-4 text-center space-y-4"
                 style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}
               >
-                {currentChapterId > 5 || (chapter && currentSceneId >= (chapter.scenes?.length || 0)) ? (
+                {currentChapterId > NOVEL_CHAPTERS.length ? (
                   <>
                     <Star className="w-8 h-8 text-yellow-400 mx-auto" />
                     <p className="font-racing text-base font-black text-white">Story Complete!</p>
-                    <p className="text-white/60 text-sm">You've reached the end of Gina's story. More chapters coming soon.</p>
+                    <p className="text-white/60 text-sm">You've reached the end of Gina's journey. More chapters coming soon.</p>
+                    <p className="font-racing text-lg text-yellow-400 font-black">{careerPoints.toLocaleString()} Career Points</p>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="w-8 h-8 text-orange-400 mx-auto" />
                     <p className="font-racing text-base font-black text-white">Story Unavailable</p>
-                    <p className="text-white/60 text-sm">There was a problem loading this scene. Reset the story to start fresh.</p>
+                    <p className="text-white/60 text-sm">Something went wrong. Restart the story to continue.</p>
                   </>
                 )}
                 <button
                   data-testid="button-reset-story-inline"
-                  onClick={() => {
-                    if (confirm("Reset Gina's story to the beginning? Your progress will be lost.")) {
-                      resetMutation.mutate();
-                    }
-                  }}
+                  onClick={() => { if (confirm("Restart the story? All progress will be lost.")) doReset(); }}
                   disabled={resetMutation.isPending}
                   className="mx-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-racing text-sm font-bold hover:bg-primary/80 transition-all"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  {resetMutation.isPending ? "Resetting..." : "Restart Story"}
+                  {resetMutation.isPending ? "Restarting..." : "Restart Story"}
                 </button>
               </div>
             )}
@@ -604,7 +841,12 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
                   <span className="font-racing text-[10px] text-primary tracking-[0.3em] uppercase font-bold">Chapter Complete</span>
                 </div>
 
-                {/* Completed chapter info */}
+                {/* Points earned this chapter */}
+                <div className="flex items-center justify-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <span className="font-racing text-base text-yellow-300 font-bold">{careerPoints.toLocaleString()} Career Points</span>
+                </div>
+
                 <div>
                   <p className="font-racing text-xl font-black text-white leading-tight">{chapter?.title}</p>
                   <p className="text-white/50 text-sm mt-1">{chapter?.subtitle}</p>
@@ -694,50 +936,65 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
 
             {/* Choices */}
             {scene?.choices && !choiceResponse && !isTyping && !showChapterEnd && (
-              <div className="space-y-2">
-                <p className="font-racing text-[10px] text-white/40 tracking-widest uppercase mb-2">Choose your response:</p>
+              <div className="space-y-2.5">
+                <p className="font-racing text-[10px] text-white/40 tracking-widest uppercase mb-2">
+                  {scene.isCritical ? "⚠️ Career Decision — choose carefully:" : "Choose your response:"}
+                </p>
                 {scene.choices.map((choice) => {
                   const done = completedChoices.includes(choice.id);
-                  const canAfford = !choice.pointCost || (profile?.totalPoints || 0) >= choice.pointCost;
+                  // Outcome styling config
+                  const outcomeStyle = {
+                    triumph: { border: "border-yellow-500/50", bg: "bg-yellow-500/5", hover: "hover:border-yellow-400/70 hover:bg-yellow-500/10", icon: <Trophy className="w-3 h-3 text-yellow-400 flex-shrink-0 mt-0.5" />, label: "Triumph", labelColor: "text-yellow-400", doneBg: "bg-yellow-500/20" },
+                    good:    { border: "border-white/20",        bg: "bg-white/5",       hover: "hover:border-white/40 hover:bg-white/10",          icon: <Star className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />,   label: "Good",    labelColor: "text-blue-400",   doneBg: "bg-primary/20" },
+                    setback: { border: "border-orange-500/40",   bg: "bg-orange-500/5",  hover: "hover:border-orange-400/60 hover:bg-orange-500/10", icon: <AlertTriangle className="w-3 h-3 text-orange-400 flex-shrink-0 mt-0.5" />, label: "Risky", labelColor: "text-orange-400", doneBg: "bg-orange-500/20" },
+                    gameover:{ border: "border-red-700/40",      bg: "bg-red-900/10",    hover: "hover:border-red-600/60 hover:bg-red-900/20",       icon: <Skull className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />,  label: "Dangerous", labelColor: "text-red-400",  doneBg: "bg-red-900/20" },
+                  }[choice.outcome] || { border: "border-white/20", bg: "bg-white/5", hover: "hover:border-white/40", icon: null, label: "", labelColor: "", doneBg: "bg-primary/20" };
+
                   return (
                     <button
                       key={choice.id}
                       data-testid={`button-choice-${choice.id}`}
                       disabled={done || progressMutation.isPending}
-                      onClick={() => handleChoice(choice)}
-                      className={`w-full text-left p-3 rounded-lg border transition-all ${
-                        done ? "border-primary/30 bg-primary/10 opacity-70 cursor-default" :
-                        canAfford ? "border-white/20 bg-white/5 hover:border-primary/50 hover:bg-primary/5" :
-                        "border-white/10 bg-white/5 opacity-50 cursor-not-allowed"
+                      onClick={() => handleChoice(choice as Choice)}
+                      className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                        done
+                          ? `${outcomeStyle.doneBg} ${outcomeStyle.border} opacity-60 cursor-default`
+                          : `${outcomeStyle.border} ${outcomeStyle.bg} ${outcomeStyle.hover} cursor-pointer`
                       }`}
                     >
-                      <div className="flex items-start gap-2">
-                        <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                          done ? "bg-primary" : canAfford ? "bg-white/10" : "bg-white/5"
-                        }`}>
-                          {done ? (
-                            <Check className="w-3 h-3 text-white" />
-                          ) : !canAfford ? (
-                            <Lock className="w-3 h-3 text-white/40" />
-                          ) : null}
-                        </div>
+                      <div className="flex items-start gap-2.5">
+                        {/* Outcome icon */}
+                        {done ? (
+                          <div className="w-4 h-4 rounded-full bg-primary flex-shrink-0 flex items-center justify-center mt-0.5">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        ) : outcomeStyle.icon}
+
                         <div className="flex-1">
-                          <p className={`text-sm leading-relaxed ${done ? "text-white/60 line-through" : canAfford ? "text-white/90" : "text-white/40"}`}>
+                          <p className={`text-sm leading-relaxed ${done ? "text-white/50 line-through" : "text-white/90"}`}>
                             {choice.text}
                           </p>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            {choice.pointCost > 0 ? (
-                              <span className={`text-[10px] font-racing font-bold ${canAfford ? "text-yellow-500" : "text-red-400"}`}>
-                                <Zap className="w-2.5 h-2.5 inline mr-0.5" />
-                                {choice.pointCost.toLocaleString()} pts
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {/* Outcome tag */}
+                            {!done && choice.outcome !== "good" && (
+                              <span className={`text-[9px] font-racing font-bold uppercase tracking-wider ${outcomeStyle.labelColor}`}>
+                                {outcomeStyle.label}
                               </span>
-                            ) : (
-                              <span className="text-[10px] font-racing text-green-400">Free</span>
                             )}
-                            <span className="text-[10px] font-racing text-pink-400">
-                              <Heart className="w-2.5 h-2.5 inline mr-0.5" />
-                              +{choice.affectionGain}
-                            </span>
+                            {/* Point reward */}
+                            {choice.pointReward > 0 && !done && (
+                              <span className="text-[10px] font-racing text-yellow-400">
+                                <Zap className="w-2.5 h-2.5 inline mr-0.5" />
+                                +{choice.pointReward.toLocaleString()} pts
+                              </span>
+                            )}
+                            {/* Affection */}
+                            {choice.affectionGain > 0 && !done && (
+                              <span className="text-[10px] font-racing text-pink-400">
+                                <Heart className="w-2.5 h-2.5 inline mr-0.5" />
+                                +{choice.affectionGain}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -843,7 +1100,6 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
         </Tabs>
       </div>
     </div>
-    </AuthGate>
   );
 }
 
