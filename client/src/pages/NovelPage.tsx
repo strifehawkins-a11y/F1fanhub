@@ -911,23 +911,30 @@ export function GinaVossGame({ embedded = false }: { embedded?: boolean } = {}) 
 
                 {/* Choice response overlay */}
                 {choiceResponse ? (
-                  <div>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <p className="text-sm text-white/90 leading-relaxed italic">{choiceResponse}</p>
                     <button
-                      className="mt-3 w-full flex items-center justify-center gap-1.5 text-primary text-xs font-racing font-bold py-2 rounded-md bg-primary/10 border border-primary/30"
+                      className="animate-story-glow mt-4 w-full flex items-center justify-center gap-2 text-white text-xs font-racing font-bold py-2.5 rounded-lg bg-primary border border-primary/80 hover:bg-primary/80 transition-colors"
                       onClick={handleContinueAfterChoice}
                       data-testid="button-continue-story"
                     >
-                      Continue <ChevronRight className="w-3 h-3" />
+                      Continue <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ) : (
                   <div>
                     <p className="text-sm text-white/90 leading-relaxed whitespace-pre-line">{displayedText}</p>
+                    {isTyping && (
+                      <p className="text-[10px] text-white/25 mt-2 font-racing tracking-widest">Tap to skip...</p>
+                    )}
                     {!isTyping && !scene.choices && (
-                      <div className="flex items-center justify-end mt-2 text-white/30 animate-bounce">
-                        <ChevronRight className="w-3 h-3" />
-                      </div>
+                      <button
+                        data-testid="button-tap-continue"
+                        onClick={(e) => { e.stopPropagation(); handleAdvance(); }}
+                        className="animate-story-glow mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary/15 border border-primary/60 font-racing text-xs font-bold text-primary hover:bg-primary/25 transition-colors"
+                      >
+                        Tap to continue <ChevronRight className="w-3.5 h-3.5 animate-bounce" />
+                      </button>
                     )}
                   </div>
                 )}
