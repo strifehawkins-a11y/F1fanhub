@@ -558,6 +558,31 @@ ${items}  </channel>
     }
   });
 
+  app.get("/api/admin/article-comments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const comments = await storage.getAllArticleComments();
+      res.json(comments);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.delete("/api/admin/article-comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const deleted = await storage.deleteArticleCommentById(Number(req.params.id));
+      if (!deleted) return res.status(404).json({ message: "Comment not found" });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
   app.post("/api/admin/auto-publish", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

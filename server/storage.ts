@@ -80,8 +80,10 @@ export interface IStorage {
   updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article | undefined>;
   deleteArticle(id: number): Promise<boolean>;
   getArticleComments(articleId: number): Promise<Array<ArticleComment & { username: string | null; profileImageUrl: string | null }>>;
+  getAllArticleComments(): Promise<Array<ArticleComment & { username: string | null; profileImageUrl: string | null; articleTitle: string | null }>>;
   createArticleComment(comment: InsertArticleComment): Promise<ArticleComment>;
   deleteArticleComment(id: number, userId: string): Promise<boolean>;
+  deleteArticleCommentById(id: number): Promise<boolean>;
   recordArticleView(articleId: number, visitorId: string): Promise<void>;
 
   // Novel
@@ -693,6 +695,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteArticleComment(id: number, userId: string): Promise<boolean> {
     const result = await db.delete(articleComments).where(and(eq(articleComments.id, id), eq(articleComments.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAllArticleComments() {
+    const results = await db
+      .select({
+        id: articleComments.id,
+        articleId: articleComments.articleId,
+        userId: articleComments.userId,
+        content: articleComments.content,
+        createdAt: articleComments.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        articleTitle: articles.title,
+      })
+      .from(articleComments)
+      .leftJoin(users, eq(articleComments.userId, users.id))
+      .leftJoin(articles, eq(articleComments.articleId, articles.id))
+      .orderBy(desc(articleComments.createdAt));
+
+    return results.map((r) => ({
+      id: r.id,
+      articleId: r.articleId,
+      userId: r.userId,
+      content: r.content,
+      createdAt: r.createdAt,
+      username: r.firstName ? `${r.firstName} ${r.lastName || ""}`.trim() : "Pilot",
+      profileImageUrl: r.profileImageUrl,
+      articleTitle: r.articleTitle,
+    }));
+  }
+
+  async deleteArticleCommentById(id: number): Promise<boolean> {
+    const result = await db.delete(articleComments).where(eq(articleComments.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 

@@ -62,14 +62,16 @@ export async function generateAndPublishArticle(): Promise<{ success: boolean; t
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // Check if we already auto-published today
-    const existing = await storage.getArticles();
-    const alreadyToday = existing.some((a: any) => {
-      const pub = a.publishedAt ? new Date(a.publishedAt).toISOString().split("T")[0] : "";
-      return pub === todayStr && (a.authorId === ADMIN_ID || a.authorId?.startsWith("auto"));
+    // Check if we already auto-submitted/published today (check both published and pending queues)
+    const [existing, pending] = await Promise.all([storage.getArticles(), storage.getPendingArticles()]);
+    const allToCheck = [...existing, ...pending];
+    const alreadyToday = allToCheck.some((a: any) => {
+      const pub = a.publishedAt || a.createdAt;
+      const pubDate = pub ? new Date(pub).toISOString().split("T")[0] : "";
+      return pubDate === todayStr && a.authorId === ADMIN_ID;
     });
     if (alreadyToday) {
-      return { success: false, message: "An article was already auto-published today." };
+      return { success: false, message: "An article was already auto-submitted today." };
     }
 
     // Get races and standings
@@ -168,8 +170,8 @@ export async function generateAndPublishArticle(): Promise<{ success: boolean; t
       };
     }
 
-    // Publish the article
-    const published = await storage.createArticle({
+    // Submit for admin review (pending status) so it can be previewed before approval
+    const submitted = await storage.submitArticle({
       title: articleData.title,
       excerpt: articleData.excerpt,
       content: articleData.content,
@@ -180,7 +182,7 @@ export async function generateAndPublishArticle(): Promise<{ success: boolean; t
       imageUrl: null,
     });
 
-    return { success: true, title: published.title };
+    return { success: true, title: submitted.title };
   } catch (err: any) {
     return { success: false, message: err?.message || "Unknown error" };
   }

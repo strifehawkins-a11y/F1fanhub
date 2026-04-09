@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,7 +29,7 @@ async function uploadImage(file: File): Promise<string> {
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
 
-type Tab = "articles" | "standings" | "races" | "polls" | "submissions" | "forum";
+type Tab = "articles" | "standings" | "races" | "polls" | "submissions" | "forum" | "comments";
 
 interface PollForm {
   question: string;
@@ -87,6 +87,12 @@ export default function AdminPage() {
     enabled: !!profile?.isAdmin,
   });
   const { data: pollsData } = useQuery<any[]>({ queryKey: ["/api/polls"] });
+  const { data: allArticleComments } = useQuery<any[]>({
+    queryKey: ["/api/admin/article-comments"],
+    enabled: !!profile?.isAdmin,
+    queryFn: () => fetch("/api/admin/article-comments").then(r => r.json()),
+    staleTime: 0,
+  });
   const { data: drivers } = useQuery<DriverStanding[]>({ queryKey: ["/api/standings/drivers"] });
   const { data: constructors } = useQuery<ConstructorStanding[]>({ queryKey: ["/api/standings/constructors"] });
   const { data: races } = useQuery<Race[]>({
@@ -114,14 +120,21 @@ export default function AdminPage() {
       apiRequest("PATCH", `/api/articles/${id}`, { sortOrder }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/articles"] }),
   });
+  const deleteArticleCommentMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/article-comments/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/article-comments"] }); toast({ title: "Comment deleted" }); },
+    onError: () => toast({ title: "Error deleting comment", variant: "destructive" }),
+  });
+
   const autoPublishMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/auto-publish", {}),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
-      toast({ title: "Auto-published!", description: data?.title || "New article published successfully." });
+      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+      toast({ title: "Submitted for review!", description: `"${data?.title || "Article"}" is in your Submissions tab for approval.` });
+      setTab("submissions");
     },
     onError: (err: any) => {
-      const msg = err?.message || "Already published today or an error occurred.";
+      const msg = err?.message || "Already submitted today or an error occurred.";
       toast({ title: "Auto-publish skipped", description: msg, variant: "destructive" });
     },
   });
@@ -329,6 +342,7 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "articles", label: "Articles", icon: Newspaper },
     { key: "submissions", label: "Submissions", icon: Inbox, badge: pendingCount },
+    { key: "comments", label: "Comments", icon: MessageCircle, badge: allArticleComments?.length },
     { key: "forum", label: "Forum", icon: MessageSquare, badge: forumPosts?.length },
     { key: "polls", label: "Polls", icon: BarChart3 },
     { key: "standings", label: "Standings", icon: BarChart2 },
@@ -1219,6 +1233,60 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "comments" && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-racing text-sm font-black text-gray-900">
+                {allArticleComments?.length || 0} Article Comments
+              </h2>
+              <span className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">Most recent first</span>
+            </div>
+            {!allArticleComments ? (
+              <div className="p-5 space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-50 rounded-lg animate-pulse" />)}</div>
+            ) : allArticleComments.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="font-racing text-sm">No article comments yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {allArticleComments.map((comment: any) => (
+                  <div key={comment.id} data-testid={`comment-row-${comment.id}`} className="px-5 py-4 flex items-start gap-4 group hover:bg-gray-50/50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-racing text-xs font-bold text-gray-700">{comment.username || "Pilot"}</span>
+                        <span className="font-racing text-[9px] text-gray-300 tracking-widest">on</span>
+                        <span className="font-racing text-[10px] text-primary font-bold truncate max-w-[200px]">
+                          {comment.articleTitle || `Article #${comment.articleId}`}
+                        </span>
+                        <span className="font-racing text-[9px] text-gray-300 ml-auto">
+                          {comment.createdAt ? format(new Date(comment.createdAt), "d MMM yyyy, HH:mm") : ""}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
+                    </div>
+                    <button
+                      data-testid={`button-delete-comment-${comment.id}`}
+                      onClick={() => {
+                        if (confirm("Delete this comment?")) {
+                          deleteArticleCommentMutation.mutate(comment.id);
+                        }
+                      }}
+                      disabled={deleteArticleCommentMutation.isPending}
+                      className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-200 transition-all flex-shrink-0 opacity-0 group-hover:opacity-100 disabled:opacity-30"
+                      title="Delete comment"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
