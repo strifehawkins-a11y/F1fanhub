@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowLeft, MessageSquare, Send, Trash2, Clock, Eye, Tag, Share2, Link2, Check } from "lucide-react";
+import { injectInternalLinks } from "@/lib/internalLinks";
+import type { ContentPart } from "@/lib/internalLinks";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +45,23 @@ export default function ArticleDetailPage() {
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
   const [copied, setCopied] = useState(false);
+  const usedTermsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    usedTermsRef.current = new Set();
+  }, [article?.id]);
+
+  function renderWithLinks(text: string) {
+    const parts: ContentPart[] = injectInternalLinks(text, usedTermsRef.current);
+    return parts.map((part, idx) => {
+      if (typeof part === "string") return part;
+      return (
+        <Link key={part.key + idx} href={part.url}>
+          <span className="text-primary hover:underline font-medium cursor-pointer">{part.term}</span>
+        </Link>
+      );
+    });
+  }
 
   const { data: article, isLoading: articleLoading } = useQuery<any>({
     queryKey: ["/api/articles", slugOrId],
@@ -284,7 +303,7 @@ export default function ArticleDetailPage() {
             }
             return (
               <p key={i} className="text-[15px] md:text-[16px] text-foreground/90 leading-[1.85] font-light">
-                {para}
+                {renderWithLinks(para)}
               </p>
             );
           })}
@@ -374,19 +393,20 @@ export default function ArticleDetailPage() {
 
         {/* ─── Related Articles ─── */}
         {(() => {
-          if (!allArticles || !article?.tags?.length) return null;
-          const related = allArticles
-            .filter((a: any) =>
-              a.id !== article.id &&
-              a.status === "published" &&
-              a.tags?.some((t: string) => article.tags.includes(t))
-            )
-            .slice(0, 3);
+          if (!allArticles) return null;
+          const published = allArticles.filter((a: any) => a.id !== article.id && a.status === "published");
+          const scored = published.map((a: any) => ({
+            ...a,
+            score: (a.tags || []).filter((t: string) => (article.tags || []).includes(t)).length,
+          }));
+          const tagMatches = scored.filter((a: any) => a.score > 0).sort((a: any, b: any) => b.score - a.score);
+          const sectionFallback = scored.filter((a: any) => a.score === 0 && a.section === article.section);
+          const related = [...tagMatches, ...sectionFallback].slice(0, 4);
           if (related.length === 0) return null;
           return (
             <div className="pt-8 border-t border-border/60">
               <h2 className="font-racing text-xl font-black text-foreground mb-5">Related Articles</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {related.map((a: any) => (
                   <Link key={a.id} href={`/articles/${a.slug || a.id}`}>
                     <div

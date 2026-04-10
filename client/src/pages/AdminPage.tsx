@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio, RefreshCw, Link2, AlertTriangle, CheckCircle } from "lucide-react";
+import { countLinkableTerms } from "@/lib/internalLinks";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,7 +30,7 @@ async function uploadImage(file: File): Promise<string> {
 const inputCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
 const labelCls = "font-racing text-[10px] text-gray-400 tracking-widest uppercase block mb-1";
 
-type Tab = "articles" | "standings" | "races" | "polls" | "submissions" | "forum" | "comments";
+type Tab = "articles" | "standings" | "races" | "polls" | "submissions" | "forum" | "comments" | "links";
 
 interface PollForm {
   question: string;
@@ -378,6 +379,7 @@ export default function AdminPage() {
     { key: "polls", label: "Polls", icon: BarChart3 },
     { key: "standings", label: "Standings", icon: BarChart2 },
     { key: "races", label: "Races", icon: Calendar },
+    { key: "links", label: "Int. Links", icon: Link2 },
   ];
 
   return (
@@ -1333,6 +1335,108 @@ export default function AdminPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "links" && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="font-racing text-sm font-black text-gray-900">Internal Link Report</h2>
+              <p className="font-racing text-[10px] text-gray-400 tracking-widest uppercase mt-0.5">
+                Articles sorted by linkable F1 term count — lowest first
+              </p>
+            </div>
+            <div className="px-5 py-3 grid grid-cols-3 gap-4 border-b border-gray-50 bg-gray-50/60">
+              {(() => {
+                const published = (articles || []).filter((a: any) => a.status === "published");
+                const counts = published.map((a: any) => countLinkableTerms(a.content || ""));
+                const none = counts.filter((c) => c === 0).length;
+                const low = counts.filter((c) => c >= 1 && c <= 3).length;
+                const good = counts.filter((c) => c >= 4).length;
+                return (
+                  <>
+                    <div className="text-center">
+                      <p className="font-racing text-xl font-black text-red-500">{none}</p>
+                      <p className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">No links</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-racing text-xl font-black text-yellow-500">{low}</p>
+                      <p className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">1–3 terms</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-racing text-xl font-black text-green-500">{good}</p>
+                      <p className="font-racing text-[9px] text-gray-400 tracking-widest uppercase">4+ terms</p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            {!articles ? (
+              <div className="p-5 space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-14 bg-gray-50 rounded-lg animate-pulse" />)}</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {[...(articles || [])]
+                  .filter((a: any) => a.status === "published")
+                  .map((a: any) => ({ ...a, linkCount: countLinkableTerms(a.content || "") }))
+                  .sort((a: any, b: any) => a.linkCount - b.linkCount)
+                  .map((a: any) => {
+                    const count = a.linkCount;
+                    const color = count === 0 ? "text-red-500" : count <= 3 ? "text-yellow-500" : "text-green-500";
+                    const bg = count === 0 ? "bg-red-50 border-red-100" : count <= 3 ? "bg-yellow-50 border-yellow-100" : "bg-green-50 border-green-100";
+                    const Icon = count === 0 ? AlertTriangle : count <= 3 ? Link2 : CheckCircle;
+                    return (
+                      <div
+                        key={a.id}
+                        data-testid={`link-report-row-${a.id}`}
+                        className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50/50 transition-colors"
+                      >
+                        <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 ${bg}`}>
+                          <Icon className={`w-4 h-4 ${color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-racing text-sm font-bold text-gray-900 truncate">{a.title}</p>
+                          <p className={`font-racing text-[10px] font-bold tracking-wide ${color}`}>
+                            {count === 0 ? "No linkable F1 terms found" : `${count} linkable term${count === 1 ? "" : "s"} detected`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <a
+                            href={`/articles/${a.slug || a.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-primary hover:border-primary/30 transition-all"
+                            title="View article"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            data-testid={`button-link-edit-${a.id}`}
+                            onClick={() => {
+                              setTab("articles");
+                              setEditingId(a.id);
+                              setForm({
+                                title: a.title,
+                                excerpt: a.excerpt,
+                                content: a.content,
+                                imageUrl: a.imageUrl || "",
+                                tags: (a.tags || []).join(", "),
+                                section: a.section || "news",
+                              });
+                              setShowForm(true);
+                            }}
+                            className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-primary hover:border-primary/30 transition-all"
+                            title="Edit article"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
