@@ -49,7 +49,7 @@ export default function ArticleDetailPage() {
 
   useEffect(() => {
     usedTermsRef.current = new Set();
-  }, [article?.id]);
+  }, [slugOrId]);
 
   function renderWithLinks(text: string) {
     const parts: ContentPart[] = injectInternalLinks(text, usedTermsRef.current);
