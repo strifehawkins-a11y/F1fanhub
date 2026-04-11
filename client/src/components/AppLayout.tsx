@@ -311,6 +311,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </span>
               </Link>
               <span className="text-gray-200 text-xs">·</span>
+              <Link href="/terms">
+                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
+                  Terms of Service
+                </span>
+              </Link>
+              <span className="text-gray-200 text-xs">·</span>
               <span className="font-racing text-[10px] text-gray-400 tracking-wide uppercase">2026 F1 Season</span>
             </nav>
           </div>
