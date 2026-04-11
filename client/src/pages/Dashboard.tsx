@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import videoSrc from "@assets/generated_videos/bea-grid-flag.mp4";
+import videoSrc from "@assets/generated_videos/f1-chequered-flag-finish.mp4";
 import { GinaVossGame } from "@/pages/NovelPage";
 import AdBanner from "@/components/AdBanner";
 

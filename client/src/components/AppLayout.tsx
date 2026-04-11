@@ -269,22 +269,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         )}
       </header>
 
-      {/* Guest sign-in banner */}
-      {!user && (
-        <div className="bg-primary text-white px-4 py-2 flex items-center justify-between gap-3 text-center">
-          <p className="font-racing text-xs tracking-wide flex-1">
-            🏎️ Join F1 Paddock — earn points, unlock Gina's story, compete in quizzes &amp; climb the leaderboard
-          </p>
-          <Link href="/login">
-            <button
-              data-testid="button-guest-banner-join"
-              className="flex-shrink-0 px-3 py-1 rounded-md font-racing text-xs font-bold bg-white text-primary hover:bg-gray-100 transition-all"
-            >
-              Join Free →
-            </button>
-          </Link>
-        </div>
-      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
