@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import AdBanner from "@/components/AdBanner";
 
 function getCategoryFromTags(tags: string[] | null): string {
   if (!tags || tags.length === 0) return "NEWS";
@@ -280,6 +281,9 @@ export default function ArticleDetailPage() {
           <p className="text-base md:text-lg font-medium text-foreground/80 leading-relaxed italic">{article.excerpt}</p>
         </blockquote>
 
+        {/* Ad — top of article body */}
+        <AdBanner />
+
         {/* Article content */}
         <div className="space-y-5">
           {article.content.split("\n\n").map((para: string, i: number) => {
@@ -411,6 +415,9 @@ export default function ArticleDetailPage() {
             </div>
           );
         })()}
+
+        {/* Ad — before related articles */}
+        <AdBanner />
 
         {/* ─── Related Articles ─── */}
         {(() => {

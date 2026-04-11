@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import videoSrc from "@assets/generated_videos/bea-grid-flag.mp4";
 import { GinaVossGame } from "@/pages/NovelPage";
+import AdBanner from "@/components/AdBanner";
 
 function estimateReadTime(content: string) {
   const words = content?.split(/\s+/).length || 0;
@@ -783,6 +784,9 @@ export default function Dashboard() {
             <PollsWidget />
           </div>
 
+          {/* Ad — between featured and general news */}
+          <AdBanner />
+
           {/* General News section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-4">
@@ -835,9 +839,13 @@ export default function Dashboard() {
           <div className="hidden lg:flex lg:flex-col lg:gap-4">
             {races && <NextRaceWidget races={races} profile={profile} />}
             <PollsWidget />
+            <AdBanner variant="square" />
           </div>
         </div>
       </div>
+
+      {/* Ad — between news and Gina's Story */}
+      <AdBanner className="mt-2" />
 
       {/* Gina Voss Visual Novel — full-width above standings */}
       <div className="mt-10 pt-6 border-t border-gray-100">
