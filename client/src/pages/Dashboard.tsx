@@ -83,6 +83,11 @@ function VideoBanner() {
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-transparent pointer-events-none" />
 
+      {/* Subtle ad label top-left */}
+      <div className="absolute top-3 left-3 z-20">
+        <span className="text-[9px] text-white/40 uppercase tracking-widest">Advertisement</span>
+      </div>
+
       {/* NEW PROMO badge top-right */}
       <div className="absolute top-3 right-3 z-20">
         <span className="promo-badge-pop inline-block bg-red-600 text-white font-black text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full shadow-lg shadow-red-900/60 border border-red-400/40">
