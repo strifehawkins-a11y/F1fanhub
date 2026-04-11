@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio, RefreshCw, Link2, AlertTriangle, CheckCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, Save, Newspaper, BarChart2, Flag, ChevronDown, ChevronUp, X, Calendar, BarChart3, CheckCircle2, XCircle, Upload, ImageIcon, Inbox, Eye, MessageSquare, Zap, MessageCircle, Radio, RefreshCw, Link2, AlertTriangle, CheckCircle, Search, ExternalLink, Info } from "lucide-react";
 import { countLinkableTerms } from "@/lib/internalLinks";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,6 +53,8 @@ export default function AdminPage() {
   const [expandedArticle, setExpandedArticle] = useState<number | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [inlineImageUploading, setInlineImageUploading] = useState(false);
+  const [seoKeyword, setSeoKeyword] = useState("");
+  const [showSeoPanel, setShowSeoPanel] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inlineImageInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -471,8 +473,114 @@ export default function AdminPage() {
                     data-testid="input-article-content"
                     className={inputCls + " resize-y font-mono"}
                   />
-                  <p className="mt-1 text-[10px] text-gray-300">Add a caption: <code className="bg-gray-100 px-1 rounded">![Caption text](/api/images/...)</code></p>
+                  <p className="mt-1 text-[10px] text-gray-300">
+                    Add headings: <code className="bg-gray-100 px-1 rounded">## H2 heading</code> &nbsp;
+                    <code className="bg-gray-100 px-1 rounded">### H3 heading</code> &nbsp;
+                    Add a caption: <code className="bg-gray-100 px-1 rounded">![Caption text](/api/images/...)</code>
+                  </p>
                 </div>
+
+                {/* SEO Checklist Panel */}
+                <div className="rounded-xl border border-blue-100 bg-blue-50/60 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowSeoPanel(p => !p)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 font-racing text-xs font-bold text-blue-700 tracking-widest uppercase">
+                      <Search className="w-3.5 h-3.5" /> SEO Checklist
+                    </span>
+                    {showSeoPanel ? <ChevronUp className="w-3.5 h-3.5 text-blue-400" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-400" />}
+                  </button>
+
+                  {showSeoPanel && (() => {
+                    const kw = seoKeyword.trim().toLowerCase();
+                    const titleHasKw = kw ? form.title.toLowerCase().includes(kw) : null;
+                    const hasH2 = form.content.split("\n").some(l => l.trimStart().startsWith("## "));
+                    const hasH3 = form.content.split("\n").some(l => l.trimStart().startsWith("### "));
+                    const hasExcerpt = form.excerpt.trim().length > 0;
+                    const h2Lines = form.content.split("\n").filter(l => l.trimStart().startsWith("## "));
+                    const h2KwMatch = kw && h2Lines.some(l => l.toLowerCase().includes(kw));
+
+                    const Check = ({ ok, label }: { ok: boolean | null; label: string }) => (
+                      <div className="flex items-start gap-2">
+                        {ok === null ? (
+                          <Info className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        ) : ok ? (
+                          <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        )}
+                        <span className={`text-xs ${ok === null ? "text-gray-400" : ok ? "text-green-700" : "text-yellow-700"}`}>{label}</span>
+                      </div>
+                    );
+
+                    const googleQ = encodeURIComponent(seoKeyword || form.title);
+
+                    return (
+                      <div className="px-4 pb-4 space-y-3">
+                        <div>
+                          <label className="font-racing text-[10px] text-blue-500 tracking-widest uppercase block mb-1">Target Keyword</label>
+                          <input
+                            type="text"
+                            value={seoKeyword}
+                            onChange={e => setSeoKeyword(e.target.value)}
+                            placeholder="e.g. F1 2026 season preview"
+                            data-testid="input-seo-keyword"
+                            className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="font-racing text-[10px] text-blue-500 tracking-widest uppercase">Checks</p>
+                          <Check ok={titleHasKw} label={titleHasKw === null ? "Enter a keyword above to check the title" : titleHasKw ? `Keyword found in title ✓` : `Keyword not in title — add "${seoKeyword}" to your headline`} />
+                          <Check ok={hasH2} label={hasH2 ? `H2 heading found (## …)` : `Missing H2 — add "## Your keyword variation" early in the content`} />
+                          {hasH2 && kw && <Check ok={h2KwMatch} label={h2KwMatch ? `Keyword variation in H2 ✓` : `Try including a keyword variation in your ## heading`} />}
+                          <Check ok={hasH3} label={hasH3 ? `H3 sub-headings present — good content structure` : `Optional: add ### sub-headings to break up long sections`} />
+                          <Check ok={hasExcerpt} label={hasExcerpt ? `Excerpt / meta description written` : `Add an excerpt — Google uses it as the search snippet`} />
+                        </div>
+
+                        <div className="pt-2 border-t border-blue-100 space-y-1.5">
+                          <p className="font-racing text-[10px] text-blue-500 tracking-widest uppercase">Keyword Research</p>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={`https://www.google.com/search?q=${googleQ}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-testid="link-google-search"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-600 font-racing text-[10px] font-bold hover:bg-blue-50 transition-colors"
+                            >
+                              <Search className="w-3 h-3" /> Google Search
+                              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                            </a>
+                            <a
+                              href={`https://www.google.com/search?q=${googleQ}+site:reddit.com`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-testid="link-reddit-research"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-600 font-racing text-[10px] font-bold hover:bg-blue-50 transition-colors"
+                            >
+                              Reddit Discussions
+                              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                            </a>
+                            <a
+                              href={`https://www.google.com/search?q=people+also+ask+${googleQ}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-testid="link-people-also-ask"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-600 font-racing text-[10px] font-bold hover:bg-blue-50 transition-colors"
+                            >
+                              People Also Ask
+                              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                            </a>
+                          </div>
+                          <p className="text-[10px] text-blue-400">Tip: look at Google autocomplete suggestions and the "People also ask" box for keyword ideas</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {/* Cover Image Upload */}
                 <div>
                   <label className={labelCls}>Cover Image</label>

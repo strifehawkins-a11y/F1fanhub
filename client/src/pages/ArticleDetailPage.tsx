@@ -283,7 +283,9 @@ export default function ArticleDetailPage() {
         {/* Article content */}
         <div className="space-y-5">
           {article.content.split("\n\n").map((para: string, i: number) => {
-            const imgMatch = para.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+            const trimmed = para.trim();
+
+            const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
             if (imgMatch) {
               return (
                 <figure key={i} className="my-6">
@@ -301,6 +303,25 @@ export default function ArticleDetailPage() {
                 </figure>
               );
             }
+
+            const h2Match = trimmed.match(/^##\s+(.+)$/);
+            if (h2Match) {
+              return (
+                <h2 key={i} className="font-racing text-xl md:text-2xl font-black text-foreground mt-8 mb-2 leading-snug">
+                  {h2Match[1]}
+                </h2>
+              );
+            }
+
+            const h3Match = trimmed.match(/^###\s+(.+)$/);
+            if (h3Match) {
+              return (
+                <h3 key={i} className="font-racing text-lg font-black text-foreground/80 mt-6 mb-1 leading-snug">
+                  {h3Match[1]}
+                </h3>
+              );
+            }
+
             return (
               <p key={i} className="text-[15px] md:text-[16px] text-foreground/90 leading-[1.85] font-light">
                 {renderWithLinks(para)}
