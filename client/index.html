@@ -89,5 +89,22 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Push-notification limiter: allow only 1 floating ad at a time -->
+    <script>
+      (function() {
+        function limitFloatingAds() {
+          var fixed = Array.from(document.body.children).filter(function(el) {
+            if (el.id === 'root') return false;
+            var s = el.style;
+            var pos = s.position || window.getComputedStyle(el).position;
+            return pos === 'fixed';
+          });
+          fixed.slice(1).forEach(function(el) { el.style.display = 'none'; });
+        }
+        var ob = new MutationObserver(limitFloatingAds);
+        ob.observe(document.body, { childList: true, subtree: false });
+        window.addEventListener('load', limitFloatingAds);
+      })();
+    </script>
   </body>
 </html>
