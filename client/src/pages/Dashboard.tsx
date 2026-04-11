@@ -28,35 +28,132 @@ function getCategoryFromTags(tags: string[] | null): string {
   return "NEWS";
 }
 
+const PROMO_LINK = "https://omg10.com/4/10861693";
+
 function VideoBanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [revving, setRevving] = useState(false);
+  const [exhausts, setExhausts] = useState<number[]>([]);
+  const [revWidth, setRevWidth] = useState(15);
 
   const handleEnded = () => {
     const v = videoRef.current;
-    if (v) {
-      v.currentTime = 0;
-      v.pause();
-    }
+    if (v) { v.currentTime = 0; v.play(); }
+  };
+
+  const handleThrottle = () => {
+    if (revving) return;
+    setRevving(true);
+    setExhausts(prev => [...prev, Date.now()]);
+    // animate rev counter
+    let w = 15;
+    const up = setInterval(() => {
+      w = Math.min(95, w + 8);
+      setRevWidth(w);
+      if (w >= 95) { clearInterval(up); setTimeout(() => { setRevWidth(15); setRevving(false); }, 400); }
+    }, 35);
+    // open link after short rev delay
+    setTimeout(() => {
+      window.open(PROMO_LINK, "_blank", "noopener,noreferrer");
+    }, 300);
+    setTimeout(() => setExhausts([]), 800);
   };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden mb-6">
-      {/* Video */}
+    <div className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer select-none"
+      style={{ minHeight: 240 }}
+      onClick={handleThrottle}
+    >
+      {/* Video background */}
       <video
         ref={videoRef}
         src={videoSrc}
         autoPlay
         muted
+        loop
         playsInline
-        preload="none"
+        preload="auto"
         onEnded={handleEnded}
         className="w-full object-cover"
-        style={{ maxHeight: 320 }}
+        style={{ maxHeight: 360, minHeight: 240 }}
       />
 
-      {/* Cinematic overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none" />
+      {/* Dark cinematic overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-transparent pointer-events-none" />
+
+      {/* NEW PROMO badge top-right */}
+      <div className="absolute top-3 right-3 z-20">
+        <span className="promo-badge-pop inline-block bg-red-600 text-white font-black text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full shadow-lg shadow-red-900/60 border border-red-400/40">
+          🔥 NEW PROMO
+        </span>
+      </div>
+
+      {/* Exhaust puff particles on throttle press */}
+      {exhausts.map(k => (
+        <div key={k} className="exhaust-puff absolute z-30 pointer-events-none"
+          style={{ bottom: "28%", left: "42%", width: 10, height: 10, borderRadius: "50%", background: "rgba(255,200,100,0.7)" }} />
+      ))}
+
+      {/* Left: promo copy */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 p-4 sm:p-6 flex items-end justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold mb-1">
+            Exclusive for F1 fans
+          </p>
+          <h2 className="text-white font-black text-xl sm:text-2xl leading-tight tracking-tight drop-shadow-lg">
+            RACE-WEEK<br className="sm:hidden" /> DEALS ARE LIVE
+          </h2>
+          <p className="text-white/70 text-xs sm:text-sm mt-1 leading-snug max-w-xs">
+            Limited promotions handpicked for the paddock. Don't let the lap end without claiming yours.
+          </p>
+
+          {/* Rev counter bar */}
+          <div className="mt-3 w-40 sm:w-52">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-white/50 text-[9px] uppercase tracking-widest">THROTTLE</span>
+              <span className="text-red-400 text-[9px] font-bold">PRESS TO REV</span>
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden border border-white/10">
+              <div className="h-full rounded-full transition-all duration-75"
+                style={{
+                  width: `${revWidth}%`,
+                  background: revWidth > 70
+                    ? "linear-gradient(90deg,#ff4444,#ff0000)"
+                    : revWidth > 40
+                    ? "linear-gradient(90deg,#ff8800,#ff4400)"
+                    : "linear-gradient(90deg,#22cc44,#44ff66)",
+                }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Throttle button */}
+        <div className="flex-shrink-0 flex flex-col items-center gap-2">
+          <button
+            ref={btnRef}
+            onClick={e => { e.stopPropagation(); handleThrottle(); }}
+            className={`throttle-idle relative w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center border-4 border-red-500/60 bg-gradient-to-br from-red-700 to-red-900 focus:outline-none active:scale-95 transition-transform ${revving ? "throttle-revving" : ""}`}
+            aria-label="Press throttle to see promo"
+          >
+            {/* Inner ring */}
+            <div className="absolute inset-1 rounded-full border border-red-400/30" />
+            {/* Icon */}
+            <svg width="26" height="22" viewBox="0 0 56 32" fill="none" className="z-10 drop-shadow">
+              <path d="M4 22 Q10 10 20 10 L42 8 Q50 7 54 14 L56 20 Q54 26 46 26 L38 27 Q28 28 18 27 L8 25 Q3 24 4 22Z" fill="white" opacity="0.95"/>
+              <circle cx="16" cy="28" r="5" fill="#111"/>
+              <circle cx="44" cy="28" r="5" fill="#111"/>
+              <circle cx="16" cy="28" r="2" fill="#444"/>
+              <circle cx="44" cy="28" r="2" fill="#444"/>
+              <path d="M34 8 L40 3 L50 6 L42 12Z" fill="#ff4444"/>
+            </svg>
+          </button>
+          <span className="text-white/70 text-[9px] uppercase tracking-widest text-center leading-tight">
+            PRESS<br/>THROTTLE
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

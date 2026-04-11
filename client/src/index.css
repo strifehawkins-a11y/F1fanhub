@@ -372,3 +372,36 @@ body > ins {
   animation: ad-shimmer 2.5s linear infinite;
 }
 .ad-bounce-cta { animation: ad-bounce-cta 1.8s ease-in-out infinite; }
+
+/* ─── Throttle button animations ─────────────────────────────────────────── */
+@keyframes throttle-idle {
+  0%, 100% { transform: scale(1) rotate(-1deg);   box-shadow: 0 0 18px 4px rgba(220,30,30,0.55); }
+  50%       { transform: scale(1.04) rotate(1deg); box-shadow: 0 0 32px 10px rgba(220,30,30,0.8); }
+}
+@keyframes throttle-rev {
+  0%   { transform: scale(1) rotate(0deg); }
+  15%  { transform: scale(0.93) rotate(-2deg); }
+  30%  { transform: scale(1.08) rotate(2deg); }
+  45%  { transform: scale(0.96) rotate(-1deg); }
+  60%  { transform: scale(1.1) rotate(1deg); }
+  80%  { transform: scale(1.04) rotate(0deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes rev-counter {
+  0%   { width: 15%; }
+  60%  { width: 95%; }
+  80%  { width: 75%; }
+  100% { width: 15%; }
+}
+@keyframes promo-badge-pop {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  50%       { transform: scale(1.1) rotate(2deg); }
+}
+@keyframes exhaust-puff {
+  0%   { transform: translateY(0) scale(1); opacity: 0.7; }
+  100% { transform: translateY(-20px) scale(2.5); opacity: 0; }
+}
+.throttle-idle    { animation: throttle-idle 1.4s ease-in-out infinite; }
+.throttle-revving { animation: throttle-rev 0.45s ease-in-out; }
+.promo-badge-pop  { animation: promo-badge-pop 2s ease-in-out infinite; }
+.exhaust-puff     { animation: exhaust-puff 0.6s ease-out forwards; }
