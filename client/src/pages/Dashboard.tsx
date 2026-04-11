@@ -9,7 +9,6 @@ import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@sh
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import videoSrc from "@assets/generated_videos/bea-grid-flag.mp4";
-import f1CarImg from "@assets/sleek-orange-racing-car-illustration_53876-319629_1775899443261.jpg";
 import { GinaVossGame } from "@/pages/NovelPage";
 import AdBanner from "@/components/AdBanner";
 
@@ -33,10 +32,10 @@ const PROMO_LINK = "https://omg10.com/4/10861693";
 
 function VideoBanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const [revving, setRevving] = useState(false);
-  const [carState, setCarState] = useState<"idle" | "launch" | "return">("idle");
-  const [revWidth, setRevWidth] = useState(15);
   const [exhausts, setExhausts] = useState<number[]>([]);
+  const [revWidth, setRevWidth] = useState(15);
 
   const handleEnded = () => {
     const v = videoRef.current;
@@ -46,132 +45,113 @@ function VideoBanner() {
   const handleThrottle = () => {
     if (revving) return;
     setRevving(true);
-    setCarState("launch");
     setExhausts(prev => [...prev, Date.now()]);
-
-    // Rev bar animation
+    // animate rev counter
     let w = 15;
     const up = setInterval(() => {
-      w = Math.min(95, w + 9);
+      w = Math.min(95, w + 8);
       setRevWidth(w);
-      if (w >= 95) {
-        clearInterval(up);
-        setTimeout(() => {
-          setRevWidth(15);
-          setCarState("return");
-          setTimeout(() => {
-            setCarState("idle");
-            setRevving(false);
-          }, 420);
-        }, 350);
-      }
-    }, 30);
-
-    // Open promo link
-    setTimeout(() => window.open(PROMO_LINK, "_blank", "noopener,noreferrer"), 280);
-    setTimeout(() => setExhausts([]), 900);
+      if (w >= 95) { clearInterval(up); setTimeout(() => { setRevWidth(15); setRevving(false); }, 400); }
+    }, 35);
+    // open link after short rev delay
+    setTimeout(() => {
+      window.open(PROMO_LINK, "_blank", "noopener,noreferrer");
+    }, 300);
+    setTimeout(() => setExhausts([]), 800);
   };
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer select-none"
-      style={{ minHeight: 260 }}
+      style={{ minHeight: 240 }}
       onClick={handleThrottle}
     >
       {/* Video background */}
       <video
         ref={videoRef}
         src={videoSrc}
-        autoPlay muted loop playsInline preload="auto"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
         onEnded={handleEnded}
         className="w-full object-cover"
-        style={{ maxHeight: 380, minHeight: 260 }}
+        style={{ maxHeight: 360, minHeight: 240 }}
       />
 
-      {/* Dark overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/5 to-transparent pointer-events-none" />
+      {/* Dark cinematic overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-transparent pointer-events-none" />
 
-      {/* NEW PROMO badge */}
+      {/* NEW PROMO badge top-right */}
       <div className="absolute top-3 right-3 z-20">
-        <span className="promo-badge-pop inline-block bg-red-600 text-white font-black text-[10px] tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-red-900/60 border border-red-400/40">
+        <span className="promo-badge-pop inline-block bg-red-600 text-white font-black text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full shadow-lg shadow-red-900/60 border border-red-400/40">
           🔥 NEW PROMO
         </span>
       </div>
 
-      {/* Exhaust sparks */}
+      {/* Exhaust puff particles on throttle press */}
       {exhausts.map(k => (
         <div key={k} className="exhaust-puff absolute z-30 pointer-events-none"
-          style={{ bottom: "38%", right: "26%", width: 12, height: 12, borderRadius: "50%", background: "rgba(255,180,50,0.85)" }} />
+          style={{ bottom: "28%", left: "42%", width: 10, height: 10, borderRadius: "50%", background: "rgba(255,200,100,0.7)" }} />
       ))}
 
-      {/* Bottom overlay: copy + car + CTA */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pb-4 sm:pb-5">
+      {/* Left: promo copy */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 p-4 sm:p-6 flex items-end justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold mb-1">
+            Exclusive for F1 fans
+          </p>
+          <h2 className="text-white font-black text-xl sm:text-2xl leading-tight tracking-tight drop-shadow-lg">
+            RACE-WEEK<br className="sm:hidden" /> DEALS ARE LIVE
+          </h2>
+          <p className="text-white/70 text-xs sm:text-sm mt-1 leading-snug max-w-xs">
+            Limited promotions handpicked for the paddock. Don't let the lap end without claiming yours.
+          </p>
 
-        {/* F1 car image — positioned above the CTA strip */}
-        <div className="flex justify-end mb-1 pr-2 pointer-events-none overflow-hidden">
-          <img
-            src={f1CarImg}
-            alt="F1 racing car"
-            className={`w-36 sm:w-48 md:w-56 object-contain drop-shadow-2xl
-              ${carState === "idle"   ? "car-idle"   : ""}
-              ${carState === "launch" ? "car-launch"  : ""}
-              ${carState === "return" ? "car-return"  : ""}
-            `}
-            style={{ filter: "drop-shadow(0 4px 24px rgba(255,140,0,0.55))" }}
-          />
-        </div>
-
-        {/* Row: copy left, CTA button right */}
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <p className="text-white/60 text-[10px] uppercase tracking-widest font-semibold mb-0.5">
-              Exclusive for F1 fans
-            </p>
-            <h2 className="text-white font-black text-xl sm:text-2xl leading-tight tracking-tight drop-shadow-lg">
-              RACE-WEEK DEALS ARE LIVE
-            </h2>
-            <p className="text-white/65 text-xs mt-1 leading-snug max-w-[220px] sm:max-w-xs">
-              Limited offers handpicked for the paddock — claim before the lap ends.
-            </p>
-
-            {/* Rev bar */}
-            <div className="mt-2.5 w-36 sm:w-52">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-white/45 text-[9px] uppercase tracking-widest">THROTTLE</span>
-                <span className="text-orange-400 text-[9px] font-bold tracking-wide">TAP TO REV</span>
-              </div>
-              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden border border-white/10">
-                <div className="h-full rounded-full transition-all duration-[40ms]"
-                  style={{
-                    width: `${revWidth}%`,
-                    background: revWidth > 70
-                      ? "linear-gradient(90deg,#ff4400,#ff0000)"
-                      : revWidth > 40
-                      ? "linear-gradient(90deg,#ff8800,#ff5500)"
-                      : "linear-gradient(90deg,#22cc44,#44ff66)",
-                  }} />
-              </div>
+          {/* Rev counter bar */}
+          <div className="mt-3 w-40 sm:w-52">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-white/50 text-[9px] uppercase tracking-widest">THROTTLE</span>
+              <span className="text-red-400 text-[9px] font-bold">PRESS TO REV</span>
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden border border-white/10">
+              <div className="h-full rounded-full transition-all duration-75"
+                style={{
+                  width: `${revWidth}%`,
+                  background: revWidth > 70
+                    ? "linear-gradient(90deg,#ff4444,#ff0000)"
+                    : revWidth > 40
+                    ? "linear-gradient(90deg,#ff8800,#ff4400)"
+                    : "linear-gradient(90deg,#22cc44,#44ff66)",
+                }} />
             </div>
           </div>
+        </div>
 
-          {/* CTA button */}
-          <div className="flex-shrink-0">
-            <button
-              onClick={e => { e.stopPropagation(); handleThrottle(); }}
-              className={`btn-flash relative flex flex-col items-center justify-center gap-1 rounded-2xl px-4 py-3 sm:px-5 border-2 border-orange-400/60 focus:outline-none active:scale-95 transition-transform ${revving ? "scale-95" : ""}`}
-              style={{ background: "linear-gradient(135deg,rgba(255,120,0,0.85),rgba(200,40,0,0.9))", boxShadow: "0 0 24px 4px rgba(255,120,0,0.45)" }}
-              aria-label="Press throttle to see promo"
-            >
-              <span className="text-white font-black text-[11px] uppercase tracking-widest leading-none">
-                🏎 PRESS
-              </span>
-              <span className="text-white/80 font-black text-[10px] uppercase tracking-widest leading-none">
-                THROTTLE
-              </span>
-              {/* Animated arrow */}
-              <span className="ad-bounce-cta text-orange-200 text-xs">→</span>
-            </button>
-          </div>
+        {/* Throttle button */}
+        <div className="flex-shrink-0 flex flex-col items-center gap-2">
+          <button
+            ref={btnRef}
+            onClick={e => { e.stopPropagation(); handleThrottle(); }}
+            className={`throttle-idle relative w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center border-4 border-red-500/60 bg-gradient-to-br from-red-700 to-red-900 focus:outline-none active:scale-95 transition-transform ${revving ? "throttle-revving" : ""}`}
+            aria-label="Press throttle to see promo"
+          >
+            {/* Inner ring */}
+            <div className="absolute inset-1 rounded-full border border-red-400/30" />
+            {/* Icon */}
+            <svg width="26" height="22" viewBox="0 0 56 32" fill="none" className="z-10 drop-shadow">
+              <path d="M4 22 Q10 10 20 10 L42 8 Q50 7 54 14 L56 20 Q54 26 46 26 L38 27 Q28 28 18 27 L8 25 Q3 24 4 22Z" fill="white" opacity="0.95"/>
+              <circle cx="16" cy="28" r="5" fill="#111"/>
+              <circle cx="44" cy="28" r="5" fill="#111"/>
+              <circle cx="16" cy="28" r="2" fill="#444"/>
+              <circle cx="44" cy="28" r="2" fill="#444"/>
+              <path d="M34 8 L40 3 L50 6 L42 12Z" fill="#ff4444"/>
+            </svg>
+          </button>
+          <span className="text-white/70 text-[9px] uppercase tracking-widest text-center leading-tight">
+            PRESS<br/>THROTTLE
+          </span>
         </div>
       </div>
     </div>
