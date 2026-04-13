@@ -62,7 +62,7 @@ function VideoBanner() {
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer select-none"
-      style={{ minHeight: 240 }}
+      style={{ minHeight: 240, aspectRatio: "16/7", maxHeight: 360 }}
       onClick={handleThrottle}
     >
       {/* Video background */}
@@ -73,11 +73,14 @@ function VideoBanner() {
         muted
         loop
         playsInline
-        preload="auto"
+        preload="metadata"
         onEnded={handleEnded}
         className="w-full object-cover"
         style={{ maxHeight: 360, minHeight: 240 }}
-      />
+        aria-label="F1 race promotional video"
+      >
+        <track kind="captions" src="" label="No captions available" default />
+      </video>
 
       {/* Dark cinematic overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 pointer-events-none" />
@@ -221,16 +224,18 @@ function PollsWidget() {
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={() => setIdx(i => (i - 1 + activePolls.length) % activePolls.length)}
-              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
               data-testid="button-poll-prev"
+              aria-label="Previous poll"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="font-racing text-[9px] text-gray-400">{idx + 1}/{activePolls.length}</span>
+            <span className="font-racing text-[9px] text-gray-600">{idx + 1}/{activePolls.length}</span>
             <button
               onClick={() => setIdx(i => (i + 1) % activePolls.length)}
-              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
               data-testid="button-poll-next"
+              aria-label="Next poll"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -685,6 +690,9 @@ function DashboardSlider({ articles }: { articles: any[] }) {
                 alt={s.title}
                 className="absolute inset-0 w-full h-full object-cover"
                 onError={() => setFailedImgs(f => ({ ...f, [s.id]: true }))}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
             </>
@@ -753,11 +761,11 @@ function DashboardSlider({ articles }: { articles: any[] }) {
                 ))}
               </div>
               <div className="flex">
-                <button onClick={prev} data-testid="button-dash-prev"
+                <button onClick={prev} data-testid="button-dash-prev" aria-label="Previous article"
                   className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-primary transition-all text-white border-l border-white/10">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <button onClick={next} data-testid="button-dash-next"
+                <button onClick={next} data-testid="button-dash-next" aria-label="Next article"
                   className="w-10 h-10 flex items-center justify-center bg-primary hover:bg-red-600 transition-all text-white">
                   <ChevronRight className="w-4 h-4" />
                 </button>

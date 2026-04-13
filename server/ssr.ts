@@ -148,6 +148,7 @@ interface PageMeta {
   publishedAt?: string;
   author?: string;
   structuredData?: object;
+  preloadImage?: string; // LCP hint — injected as <link rel="preload" as="image">
 }
 
 function buildMetaTags(meta: PageMeta): string {
@@ -177,6 +178,10 @@ function buildMetaTags(meta: PageMeta): string {
     if (meta.publishedAt) tags += `\n  <meta property="article:published_time" content="${esc(meta.publishedAt)}" />`;
     if (meta.author) tags += `\n  <meta property="article:author" content="${esc(meta.author)}" />`;
     tags += `\n  <meta property="article:section" content="Formula 1" />`;
+  }
+
+  if (meta.preloadImage) {
+    tags += `\n  <link rel="preload" as="image" href="${esc(meta.preloadImage)}" fetchpriority="high" />`;
   }
 
   if (meta.structuredData) {
@@ -395,8 +400,30 @@ export function registerSSRRoutes(app: Express, dev = true) {
   // Article detail — highest SEO priority
   app.get("/articles/:slugOrId", (req, res) => handleArticle(req, res, dev));
 
-  // Static pages
+  // Homepage — async so we can preload the first article's hero image (LCP fix)
+  app.get("/", async (_req, res) => {
+    try {
+      const homeMeta = { ...STATIC_PAGES["/"] };
+      try {
+        const articles = await storage.getArticles();
+        const first = Array.isArray(articles) ? articles[0] : undefined;
+        if (first?.imageUrl) {
+          homeMeta.preloadImage = first.imageUrl;
+        }
+      } catch {
+        // non-fatal — proceed without preload
+      }
+      const html = injectMeta(readTemplate(dev), homeMeta);
+      res.status(200).set("Content-Type", "text/html").end(html);
+    } catch (err) {
+      console.error("[ssr] homepage error:", err);
+      res.status(200).set("Content-Type", "text/html").end(readTemplate(dev));
+    }
+  });
+
+  // Static pages (excludes "/" which is handled above)
   for (const [routePath, meta] of Object.entries(STATIC_PAGES)) {
+    if (routePath === "/") continue; // handled above
     app.get(routePath, (_req, res) => {
       try {
         const html = injectMeta(readTemplate(dev), meta);

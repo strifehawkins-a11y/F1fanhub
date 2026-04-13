@@ -100,7 +100,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
                       isActive(path)
                         ? "text-primary bg-primary/8 border border-primary/15"
-                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     {label}
@@ -112,7 +112,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <button className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
                     isActive("/admin")
                       ? "text-primary bg-primary/8 border border-primary/15"
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}>
                     Admin
                   </button>
@@ -189,8 +189,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
               {/* Mobile hamburger */}
               <button
-                className="md:hidden p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                className="md:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -209,7 +211,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide transition-all ${
                       isActive(path)
                         ? "text-primary bg-primary/8"
-                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -224,7 +226,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide transition-all ${
                       isActive("/admin")
                         ? "text-primary bg-primary/8"
-                        : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Shield className="w-4 h-4" />
