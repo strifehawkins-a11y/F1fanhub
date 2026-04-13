@@ -37,6 +37,102 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+/**
+ * Lightweight markdown → HTML converter (no dependencies).
+ * Handles headings, bold, italic, images, links, lists, blockquotes, code, hr.
+ */
+function markdownToHtml(md: string): string {
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) { out.push("</ul>"); inUl = false; }
+    if (inOl) { out.push("</ol>"); inOl = false; }
+  };
+
+  const inlineConvert = (line: string): string =>
+    line
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;height:auto;display:block;margin:1em 0" loading="lazy">')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    // Horizontal rule
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+      closeLists();
+      out.push("<hr>");
+      continue;
+    }
+
+    // Headings
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
+    if (headingMatch) {
+      closeLists();
+      const level = headingMatch[1].length;
+      out.push(`<h${level}>${inlineConvert(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      closeLists();
+      out.push(`<blockquote>${inlineConvert(line.slice(2))}</blockquote>`);
+      continue;
+    }
+
+    // Unordered list
+    const ulMatch = line.match(/^[-*+]\s+(.*)/);
+    if (ulMatch) {
+      if (inOl) { out.push("</ol>"); inOl = false; }
+      if (!inUl) { out.push("<ul>"); inUl = true; }
+      out.push(`<li>${inlineConvert(ulMatch[1])}</li>`);
+      continue;
+    }
+
+    // Ordered list
+    const olMatch = line.match(/^\d+\.\s+(.*)/);
+    if (olMatch) {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      if (!inOl) { out.push("<ol>"); inOl = true; }
+      out.push(`<li>${inlineConvert(olMatch[1])}</li>`);
+      continue;
+    }
+
+    // Empty line — close lists, add paragraph break
+    if (line.trim() === "") {
+      closeLists();
+      out.push("");
+      continue;
+    }
+
+    // Regular paragraph line
+    closeLists();
+    out.push(inlineConvert(line));
+  }
+
+  closeLists();
+
+  // Group consecutive non-empty non-block lines into <p> tags
+  const raw = out.join("\n");
+  const blocks = raw.split(/\n{2,}/);
+  return blocks
+    .map((block) => {
+      const b = block.trim();
+      if (!b) return "";
+      if (/^<(h[1-6]|ul|ol|li|blockquote|hr|img|pre|figure)/.test(b)) return b;
+      return `<p>${b.replace(/\n/g, "<br>")}</p>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function excerpt(text: string, maxLen = 160): string {
   const clean = stripMarkdown(text);
   if (clean.length <= maxLen) return clean;
@@ -180,7 +276,36 @@ async function handleArticle(req: Request, res: Response, dev: boolean) {
       },
     };
 
-    const html = injectMeta(readTemplate(dev), meta);
+    // Convert article markdown to HTML for crawler-visible body content
+    const articleHtml = markdownToHtml(article.content || "");
+    const publishedDateStr = publishedAt
+      ? new Date(publishedAt).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })
+      : "";
+
+    // Pre-rendered article HTML injected into #root so crawlers see the full body.
+    // React replaces this on the client when it hydrates.
+    const prerender = `
+<div id="root"><div style="max-width:900px;margin:0 auto;padding:2rem 1rem;font-family:Georgia,serif;color:#111;line-height:1.7">
+  <nav style="margin-bottom:1.5rem"><a href="/articles" style="color:#e10600;text-decoration:none;font-size:.9rem">← Back to Articles</a></nav>
+  <article>
+    <header style="margin-bottom:2rem">
+      <h1 style="font-size:2rem;font-weight:700;line-height:1.25;margin:0 0 .75rem">${esc(article.title)}</h1>
+      <div style="color:#555;font-size:.9rem">
+        ${publishedDateStr ? `<time datetime="${publishedAt}">${publishedDateStr}</time>` : ""}
+        ${authorName !== "F1 Paddock" ? ` · <span>${esc(authorName)}</span>` : ""}
+        ${tags.length ? ` · <span>${tags.map(esc).join(", ")}</span>` : ""}
+      </div>
+      ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title)}" style="width:100%;max-height:500px;object-fit:cover;border-radius:8px;margin-top:1.25rem">` : ""}
+    </header>
+    <div style="font-size:1.1rem">
+${articleHtml}
+    </div>
+  </article>
+</div></div>`;
+
+    const base = injectMeta(readTemplate(dev), meta);
+    // Replace the empty root div with the pre-rendered article (handles any whitespace)
+    const html = base.replace(/<div\s+id="root"\s*>\s*<\/div>/, prerender);
     res.status(200).set("Content-Type", "text/html").end(html);
   } catch (err) {
     console.error("[ssr] article error:", err);
