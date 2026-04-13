@@ -8,9 +8,10 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import videoSrc from "@assets/generated_videos/f1-chequered-flag-finish.mp4";
 import { GinaVossGame } from "@/pages/NovelPage";
 import AdBanner from "@/components/AdBanner";
+
+const BANNER_IMAGE = "/banner-bg.webp";
 
 function estimateReadTime(content: string) {
   const words = content?.split(/\s+/).length || 0;
@@ -31,16 +32,10 @@ function getCategoryFromTags(tags: string[] | null): string {
 const PROMO_LINK = "https://omg10.com/4/10861693";
 
 function VideoBanner() {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [revving, setRevving] = useState(false);
   const [exhausts, setExhausts] = useState<number[]>([]);
   const [revWidth, setRevWidth] = useState(15);
-
-  const handleEnded = () => {
-    const v = videoRef.current;
-    if (v) { v.currentTime = 0; v.play(); }
-  };
 
   const handleThrottle = () => {
     if (revving) return;
@@ -65,22 +60,14 @@ function VideoBanner() {
       style={{ minHeight: 240, aspectRatio: "16/7", maxHeight: 360 }}
       onClick={handleThrottle}
     >
-      {/* Video background */}
-      <video
-        ref={videoRef}
-        src={videoSrc}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        onEnded={handleEnded}
-        className="w-full object-cover"
-        style={{ maxHeight: 360, minHeight: 240 }}
-        aria-label="F1 race promotional video"
-      >
-        <track kind="captions" src="" label="No captions available" default />
-      </video>
+      {/* Banner background image */}
+      <img
+        src={BANNER_IMAGE}
+        alt="F1 race promotional banner"
+        className="w-full h-full object-cover absolute inset-0"
+        fetchPriority="high"
+        loading="eager"
+      />
 
       {/* Dark cinematic overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 pointer-events-none" />
