@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { storage } from "./storage";
+import { registerSSRRoutes } from "./ssr";
 import { insertForumPostSchema, insertForumCommentSchema, insertArticleSchema, insertArticleCommentSchema } from "@shared/schema";
 import { seedDatabase } from "./seed";
 import { setupFacebookAuth, isFacebookAuthEnabled } from "./facebookAuth";
@@ -918,6 +919,10 @@ ${items}  </channel>
 
   // Seed the database on startup
   await seedDatabase();
+
+  // SSR meta-injection routes — must be registered before Vite/static catch-all
+  const isDev = process.env.NODE_ENV !== "production";
+  registerSSRRoutes(app, isDev);
 
   return httpServer;
 }
