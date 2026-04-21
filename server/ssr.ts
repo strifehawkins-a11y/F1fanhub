@@ -1,11 +1,11 @@
 /**
- * Server-Side Meta Injection (SSR-lite)
+ * Server-Side Rendering (SSR) for F1 Paddock
  *
- * Intercepts page requests before the Vite/static catch-all and injects
- * page-specific <title>, <meta name="description">, and Open Graph / Twitter
- * Card tags into index.html.  Google, WhatsApp, Twitter and other crawlers
- * receive a fully-populated HTML document; real users still load the fast
- * React SPA which hydrates immediately.
+ * Article pages: generates a COMPLETE HTML document from Node.js.
+ * Google / crawlers receive fully-rendered HTML with all article content.
+ * React then loads in the browser and takes over the page for interactivity.
+ *
+ * Static pages: injects meta tags into the React SPA template as before.
  */
 
 import fs from "fs";
@@ -38,7 +38,7 @@ function stripMarkdown(text: string): string {
 }
 
 /**
- * Lightweight markdown → HTML converter (no dependencies).
+ * Lightweight markdown → semantic HTML converter.
  * Handles headings, bold, italic, images, links, lists, blockquotes, code, hr.
  */
 function markdownToHtml(md: string): string {
@@ -64,14 +64,10 @@ function markdownToHtml(md: string): string {
   for (const rawLine of lines) {
     const line = rawLine.trim();
 
-    // Horizontal rule
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-      closeLists();
-      out.push("<hr>");
-      continue;
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+      closeLists(); out.push("<hr>"); continue;
     }
 
-    // Headings
     const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
     if (headingMatch) {
       closeLists();
@@ -80,14 +76,12 @@ function markdownToHtml(md: string): string {
       continue;
     }
 
-    // Blockquote
     if (line.startsWith("> ")) {
       closeLists();
       out.push(`<blockquote>${inlineConvert(line.slice(2))}</blockquote>`);
       continue;
     }
 
-    // Unordered list
     const ulMatch = line.match(/^[-*+]\s+(.*)/);
     if (ulMatch) {
       if (inOl) { out.push("</ol>"); inOl = false; }
@@ -96,7 +90,6 @@ function markdownToHtml(md: string): string {
       continue;
     }
 
-    // Ordered list
     const olMatch = line.match(/^\d+\.\s+(.*)/);
     if (olMatch) {
       if (inUl) { out.push("</ul>"); inUl = false; }
@@ -105,21 +98,16 @@ function markdownToHtml(md: string): string {
       continue;
     }
 
-    // Empty line — close lists, add paragraph break
-    if (line.trim() === "") {
-      closeLists();
-      out.push("");
-      continue;
+    if (line === "") {
+      closeLists(); out.push(""); continue;
     }
 
-    // Regular paragraph line
     closeLists();
     out.push(inlineConvert(line));
   }
 
   closeLists();
 
-  // Group consecutive non-empty non-block lines into <p> tags
   const raw = out.join("\n");
   const blocks = raw.split(/\n{2,}/);
   return blocks
@@ -139,6 +127,188 @@ function excerpt(text: string, maxLen = 160): string {
   return clean.slice(0, maxLen - 1).replace(/\s+\S*$/, "") + "…";
 }
 
+/* ── bundle tag extraction ─────────────────────────────────────────────
+ * In production, read the built index.html and pull out the hashed
+ * CSS/JS asset tags so we can include them in the SSR page.
+ * In dev, Vite serves assets dynamically via the module entrypoint.
+ * ──────────────────────────────────────────────────────────────────── */
+
+interface BundleTags { css: string; js: string; }
+
+function getBundleTags(dev: boolean): BundleTags {
+  if (dev) {
+    // Vite dev server: inject JS as a module; CSS is handled by JS
+    return {
+      css: "",
+      js: `<script type="module" src="/src/main.tsx"></script>`,
+    };
+  }
+
+  try {
+    const distIndex = path.resolve(__dirname, "public", "index.html");
+    const builtHtml = fs.readFileSync(distIndex, "utf-8");
+
+    const cssLinks = (builtHtml.match(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi) || []).join("\n  ");
+    const jsScripts = (builtHtml.match(/<script[^>]+type=["']module["'][^>]+src=["'][^"']*assets[^"']*["'][^>]*><\/script>/gi) || []).join("\n  ");
+
+    return { css: cssLinks, js: jsScripts };
+  } catch {
+    return { css: "", js: "" };
+  }
+}
+
+/* ── complete article HTML generator ─────────────────────────────────── */
+
+function buildCompleteArticleHtml(article: any, bundles: BundleTags): string {
+  const tags: string[] = Array.isArray(article.tags) ? article.tags : [];
+  const authorName = article.username || "F1 Paddock";
+  const publishedAt = article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined;
+  const publishedDateStr = publishedAt
+    ? new Date(publishedAt).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })
+    : "";
+  const url = `${SITE_URL}/articles/${article.slug || article.id}`;
+  const desc = article.excerpt
+    ? article.excerpt.slice(0, 160)
+    : excerpt(article.content || "", 160);
+  const img = article.imageUrl || DEFAULT_IMAGE;
+  const articleHtml = markdownToHtml(article.content || "");
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: article.title,
+    description: article.excerpt || "",
+    image: [img],
+    datePublished: publishedAt,
+    dateModified: article.updatedAt ? new Date(article.updatedAt).toISOString() : publishedAt,
+    author: [{ "@type": "Person", name: authorName }],
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon-512.png` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    keywords: tags.join(", "),
+    articleSection: "Formula 1",
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+  };
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary SEO -->
+  <title>${esc(article.title)} | ${SITE_NAME}</title>
+  <meta name="description" content="${esc(desc)}" />
+  <link rel="canonical" href="${esc(url)}" />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="${esc(authorName)}" />
+  ${tags.length ? `<meta name="keywords" content="${esc(tags.join(", "))}, Formula 1, F1 2026" />` : ""}
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${esc(url)}" />
+  <meta property="og:title" content="${esc(article.title)}" />
+  <meta property="og:description" content="${esc(desc)}" />
+  <meta property="og:image" content="${esc(img)}" />
+  <meta property="og:site_name" content="${SITE_NAME}" />
+  ${publishedAt ? `<meta property="article:published_time" content="${esc(publishedAt)}" />` : ""}
+  <meta property="article:section" content="Formula 1" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${esc(article.title)}" />
+  <meta name="twitter:description" content="${esc(desc)}" />
+  <meta name="twitter:image" content="${esc(img)}" />
+
+  <!-- JSON-LD NewsArticle -->
+  <script type="application/ld+json">${JSON.stringify(structuredData)}</script>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#C41230" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Google AdSense -->
+  <meta name="google-adsense-account" content="ca-pub-7082186694183581" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7082186694183581" crossorigin="anonymous"></script>
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-HQEY0YNS0Q"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HQEY0YNS0Q');</script>
+
+  <!-- Google Subscribe with Google -->
+  <script defer type="application/javascript" src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
+  <script>window.addEventListener('load',function(){(self.SWG_BASIC=self.SWG_BASIC||[]).push(function(s){s.init({type:"NewsArticle",isPartOfType:["Product"],isPartOfProductId:"CAowgYDLDA:openaccess",clientOptions:{theme:"light",lang:"en-GB"}});});});</script>
+
+  ${article.imageUrl ? `<link rel="preload" as="image" href="${esc(article.imageUrl)}" fetchpriority="high" />` : ""}
+
+  <!-- App CSS bundle (production) -->
+  ${bundles.css}
+
+  <!-- Fallback article styles for crawlers / no-JS -->
+  <style>
+    body{margin:0;font-family:Georgia,serif;background:#fff;color:#111}
+    .ssr-article{max-width:860px;margin:0 auto;padding:1.5rem 1rem 4rem}
+    .ssr-nav{font-size:.85rem;margin-bottom:1.5rem}
+    .ssr-nav a{color:#e10600;text-decoration:none}
+    .ssr-nav a:hover{text-decoration:underline}
+    .ssr-article h1{font-size:2rem;font-weight:800;line-height:1.2;margin:0 0 .75rem;color:#111}
+    .ssr-article h2{font-size:1.4rem;font-weight:700;margin:2rem 0 .5rem;color:#111}
+    .ssr-article h3{font-size:1.15rem;font-weight:700;margin:1.5rem 0 .4rem;color:#222}
+    .ssr-article p{margin:.75rem 0;line-height:1.75;font-size:1.05rem}
+    .ssr-article ul,.ssr-article ol{margin:.75rem 0;padding-left:1.5rem;line-height:1.75}
+    .ssr-article li{margin:.3rem 0}
+    .ssr-article blockquote{border-left:4px solid #e10600;margin:1.5rem 0;padding:.5rem 1rem;color:#444;font-style:italic}
+    .ssr-article img{max-width:100%;height:auto;border-radius:8px;margin:1.25rem 0;display:block}
+    .ssr-article code{background:#f4f4f4;padding:.15em .35em;border-radius:3px;font-size:.9em}
+    .ssr-article hr{border:none;border-top:1px solid #eee;margin:2rem 0}
+    .ssr-meta{color:#666;font-size:.9rem;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;gap:.4rem .75rem;align-items:center}
+    .ssr-hero{width:100%;max-height:480px;object-fit:cover;border-radius:10px;margin:1.25rem 0 2rem;display:block}
+    .ssr-tag{display:inline-block;background:#fff0f0;color:#e10600;border:1px solid #fcc;border-radius:20px;padding:.15rem .6rem;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <!-- Pre-rendered article — Google indexes this fully; React replaces on load -->
+    <div class="ssr-article">
+      <nav class="ssr-nav">
+        <a href="/">F1 Paddock</a>
+        <span style="color:#bbb;margin:0 .3rem">›</span>
+        <a href="/articles">Articles</a>
+      </nav>
+      <article itemscope itemtype="https://schema.org/NewsArticle">
+        <h1 itemprop="headline">${esc(article.title)}</h1>
+        <div class="ssr-meta">
+          ${publishedDateStr ? `<time itemprop="datePublished" datetime="${publishedAt || ""}">${publishedDateStr}</time>` : ""}
+          ${authorName !== "F1 Paddock" ? `<span>·</span><span itemprop="author">${esc(authorName)}</span>` : ""}
+          ${tags.map(t => `<span class="ssr-tag">${esc(t)}</span>`).join("")}
+        </div>
+        ${article.imageUrl ? `<img itemprop="image" class="ssr-hero" src="${esc(article.imageUrl)}" alt="${esc(article.title)}" loading="eager" fetchpriority="high">` : ""}
+        <div itemprop="articleBody" class="ssr-body">
+${articleHtml}
+        </div>
+      </article>
+    </div>
+  </div>
+  <!-- React SPA bundle — loads and replaces the pre-rendered content -->
+  ${bundles.js}
+</body>
+</html>`;
+}
+
+/* ── SPA meta injection (non-article pages) ───────────────────────────── */
+
 interface PageMeta {
   title: string;
   description: string;
@@ -148,7 +318,7 @@ interface PageMeta {
   publishedAt?: string;
   author?: string;
   structuredData?: object;
-  preloadImage?: string; // LCP hint — injected as <link rel="preload" as="image">
+  preloadImage?: string;
 }
 
 function buildMetaTags(meta: PageMeta): string {
@@ -194,25 +364,19 @@ function buildMetaTags(meta: PageMeta): string {
 function injectMeta(html: string, meta: PageMeta): string {
   const tags = buildMetaTags(meta);
 
-  // Strip all static meta that we will replace with page-specific values
   let result = html
     .replace(/<title>[^<]*<\/title>/i, "")
     .replace(/<meta\s+name="description"[^>]*\/?>/gi, "")
     .replace(/<link\s+rel="canonical"[^>]*\/?>/gi, "")
     .replace(/<!-- Primary SEO -->/g, "")
-    // Remove ALL existing OG and Twitter card tags so we have no duplicates
     .replace(/<meta\s+property="og:[^"]*"[^>]*\/?>/gi, "")
     .replace(/<meta\s+property="article:[^"]*"[^>]*\/?>/gi, "")
     .replace(/<meta\s+name="twitter:[^"]*"[^>]*\/?>/gi, "")
-    // Remove static block comments
     .replace(/<!-- Open Graph \/ Facebook -->/g, "")
     .replace(/<!-- Twitter Card -->/g, "")
-    // Remove any existing ld+json structured data blocks that duplicate ours
     .replace(/<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/gi, "");
 
-  // Inject right after <head> so SSR tags are first thing crawlers see
   result = result.replace(/(<head[^>]*>)/, `$1\n${tags}`);
-
   return result;
 }
 
@@ -237,84 +401,31 @@ async function handleArticle(req: Request, res: Response, dev: boolean) {
     if (!article) {
       article = await storage.getArticleBySlug(slugOrId);
     }
+
     if (!article) {
-      // Let React handle 404
-      const html = readTemplate(dev);
+      // Unknown article — let React handle the 404
+      const html = injectMeta(readTemplate(dev), {
+        title: `Article Not Found | ${SITE_NAME}`,
+        description: DEFAULT_DESC,
+        url: `${SITE_URL}${req.path}`,
+      });
       return res.status(200).set("Content-Type", "text/html").end(html);
     }
 
-    const url = `${SITE_URL}/articles/${article.slug || article.id}`;
-    const desc = article.excerpt
-      ? esc(article.excerpt.slice(0, 160))
-      : excerpt(article.content || "", 160);
-    const authorName = article.username || "F1 Paddock";
-    const publishedAt = article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined;
-    const tags: string[] = Array.isArray(article.tags) ? article.tags : [];
+    // Generate a COMPLETE HTML document — not relying on React template or regex
+    const bundles = getBundleTags(dev);
+    const html = buildCompleteArticleHtml(article, bundles);
 
-    const meta: PageMeta = {
-      title: `${esc(article.title)} | ${SITE_NAME}`,
-      description: desc,
-      image: article.imageUrl || DEFAULT_IMAGE,
-      url,
-      type: "article",
-      publishedAt,
-      author: authorName,
-      structuredData: {
-        "@context": "https://schema.org",
-        "@type": "NewsArticle",
-        headline: article.title,
-        description: article.excerpt || "",
-        image: [article.imageUrl || DEFAULT_IMAGE],
-        datePublished: publishedAt,
-        dateModified: article.updatedAt ? new Date(article.updatedAt).toISOString() : publishedAt,
-        author: [{ "@type": "Person", name: authorName }],
-        publisher: {
-          "@type": "Organization",
-          name: SITE_NAME,
-          url: SITE_URL,
-          logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon-512.png` },
-        },
-        mainEntityOfPage: { "@type": "WebPage", "@id": url },
-        keywords: tags.join(", "),
-        articleSection: "Formula 1",
-        isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
-      },
-    };
-
-    // Convert article markdown to HTML for crawler-visible body content
-    const articleHtml = markdownToHtml(article.content || "");
-    const publishedDateStr = publishedAt
-      ? new Date(publishedAt).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })
-      : "";
-
-    // Pre-rendered article HTML injected into #root so crawlers see the full body.
-    // React replaces this on the client when it hydrates.
-    const prerender = `
-<div id="root"><div style="max-width:900px;margin:0 auto;padding:2rem 1rem;font-family:Georgia,serif;color:#111;line-height:1.7">
-  <nav style="margin-bottom:1.5rem"><a href="/articles" style="color:#e10600;text-decoration:none;font-size:.9rem">← Back to Articles</a></nav>
-  <article>
-    <header style="margin-bottom:2rem">
-      <h1 style="font-size:2rem;font-weight:700;line-height:1.25;margin:0 0 .75rem">${esc(article.title)}</h1>
-      <div style="color:#555;font-size:.9rem">
-        ${publishedDateStr ? `<time datetime="${publishedAt}">${publishedDateStr}</time>` : ""}
-        ${authorName !== "F1 Paddock" ? ` · <span>${esc(authorName)}</span>` : ""}
-        ${tags.length ? ` · <span>${tags.map(esc).join(", ")}</span>` : ""}
-      </div>
-      ${article.imageUrl ? `<img src="${esc(article.imageUrl)}" alt="${esc(article.title)}" style="width:100%;max-height:500px;object-fit:cover;border-radius:8px;margin-top:1.25rem">` : ""}
-    </header>
-    <div style="font-size:1.1rem">
-${articleHtml}
-    </div>
-  </article>
-</div></div>`;
-
-    const base = injectMeta(readTemplate(dev), meta);
-    // Replace the empty root div with the pre-rendered article (handles any whitespace)
-    const html = base.replace(/<div\s+id="root"\s*>\s*<\/div>/, prerender);
+    console.log(`[ssr] article "${article.slug}" served — ${html.length} chars`);
     res.status(200).set("Content-Type", "text/html").end(html);
   } catch (err) {
     console.error("[ssr] article error:", err);
-    res.status(200).set("Content-Type", "text/html").end(readTemplate(dev));
+    // Fallback to plain template so the page still loads for users
+    try {
+      res.status(200).set("Content-Type", "text/html").end(readTemplate(dev));
+    } catch {
+      res.status(500).send("Internal Server Error");
+    }
   }
 }
 
@@ -397,22 +508,18 @@ const STATIC_PAGES: Record<string, PageMeta> = {
 /* ── register ─────────────────────────────────────────────────────────── */
 
 export function registerSSRRoutes(app: Express, dev = true) {
-  // Article detail — highest SEO priority
+  // Article detail — full Node.js SSR, no React template dependency
   app.get("/articles/:slugOrId", (req, res) => handleArticle(req, res, dev));
 
-  // Homepage — async so we can preload the first article's hero image (LCP fix)
+  // Homepage — async so we can preload the first article's hero image (LCP)
   app.get("/", async (_req, res) => {
     try {
       const homeMeta = { ...STATIC_PAGES["/"] };
       try {
         const articles = await storage.getArticles();
         const first = Array.isArray(articles) ? articles[0] : undefined;
-        if (first?.imageUrl) {
-          homeMeta.preloadImage = first.imageUrl;
-        }
-      } catch {
-        // non-fatal — proceed without preload
-      }
+        if (first?.imageUrl) homeMeta.preloadImage = first.imageUrl;
+      } catch { /* non-fatal */ }
       const html = injectMeta(readTemplate(dev), homeMeta);
       res.status(200).set("Content-Type", "text/html").end(html);
     } catch (err) {
@@ -421,9 +528,9 @@ export function registerSSRRoutes(app: Express, dev = true) {
     }
   });
 
-  // Static pages (excludes "/" which is handled above)
+  // Static pages
   for (const [routePath, meta] of Object.entries(STATIC_PAGES)) {
-    if (routePath === "/") continue; // handled above
+    if (routePath === "/") continue;
     app.get(routePath, (_req, res) => {
       try {
         const html = injectMeta(readTemplate(dev), meta);
