@@ -467,6 +467,8 @@ function buildCompleteHomepageHtml(articles: any[], bundles: BundleTags): string
       </div>
     </div>
   </div>
+  <!-- SSR initial data — pre-populates TanStack Query cache so React shows articles immediately -->
+  <script>window.__INITIAL_DATA__=${JSON.stringify({ articles }).replace(/<\/script>/gi, "<\\/script>")};</script>
   <!-- React SPA bundle — loads and replaces the pre-rendered content -->
   ${bundles.js}
 </body>
