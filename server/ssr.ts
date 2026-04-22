@@ -243,6 +243,9 @@ function buildCompleteArticleHtml(article: any, bundles: BundleTags): string {
   <meta name="google-adsense-account" content="ca-pub-7082186694183581" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7082186694183581" crossorigin="anonymous"></script>
 
+  <!-- MonetTag Vignette -->
+  <script>(function(s){s.dataset.zone='10908837',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-HQEY0YNS0Q"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-HQEY0YNS0Q');</script>
@@ -389,6 +392,9 @@ function buildCompleteHomepageHtml(articles: any[], bundles: BundleTags): string
   <!-- Google AdSense -->
   <meta name="google-adsense-account" content="ca-pub-7082186694183581" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7082186694183581" crossorigin="anonymous"></script>
+
+  <!-- MonetTag Vignette -->
+  <script>(function(s){s.dataset.zone='10908837',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-HQEY0YNS0Q"></script>
