@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { generateAndPublishBatch, generateAndPublishTrendingBatch } from "./autoPublish";
 import { syncStandingsFromAPI } from "./syncStandings";
+import { syncRacesFromAPI } from "./syncRaces";
 import { postBatchToReddit } from "./redditPost";
 import { postBatchToCommunities } from "./communityPost";
 
@@ -178,14 +179,11 @@ app.use((req, res, next) => {
   }
   scheduleNextWeeklyTrendingPublish();
 
-  // Weekly standings sync — fires every Monday at 08:00 UTC (after race weekends)
+  // Daily standings sync — fires every day at 08:00 UTC so points update after every race weekend
   function scheduleNextStandingsSync() {
     const now = new Date();
     const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 0, 0, 0));
-    // Advance to next Monday
-    const daysUntilMonday = (8 - next.getUTCDay()) % 7 || 7;
-    next.setUTCDate(next.getUTCDate() + (next.getTime() <= now.getTime() ? daysUntilMonday : daysUntilMonday === 7 ? 0 : daysUntilMonday));
-    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 7);
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
     const msUntil = next.getTime() - now.getTime();
     log(`Standings sync scheduled in ${Math.round(msUntil / 3600000)}h (${next.toISOString()})`, "scheduler");
     setTimeout(async () => {
@@ -199,4 +197,29 @@ app.use((req, res, next) => {
     }, msUntil);
   }
   scheduleNextStandingsSync();
+
+  // Weekly race schedule sync — fires every Monday at 08:30 UTC
+  function scheduleNextRaceSync() {
+    const now = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 30, 0, 0));
+    const daysUntilMonday = (8 - next.getUTCDay()) % 7 || 7;
+    if (next.getUTCDay() === 1 && next.getTime() > now.getTime()) {
+      // today is Monday and 08:30 hasn't passed yet — fire today
+    } else {
+      next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+    }
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 7);
+    const msUntil = next.getTime() - now.getTime();
+    log(`Race schedule sync scheduled in ${Math.round(msUntil / 3600000)}h (${next.toISOString()})`, "scheduler");
+    setTimeout(async () => {
+      try {
+        const result = await syncRacesFromAPI("current");
+        log(`Race schedule synced: ${result.races} races for ${result.season}`, "scheduler");
+      } catch (err: any) {
+        log(`Race schedule sync error: ${err?.message}`, "scheduler");
+      }
+      scheduleNextRaceSync();
+    }, msUntil);
+  }
+  scheduleNextRaceSync();
 })();

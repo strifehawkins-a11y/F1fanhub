@@ -50,6 +50,7 @@ export interface IStorage {
   getAllRaces(season?: number): Promise<Race[]>;
   getRaceById(id: number): Promise<Race | undefined>;
   upsertRace(race: Omit<Race, "id">): Promise<Race>;
+  deleteRacesBySeason(season: number): Promise<void>;
 
   // Quiz
   getQuizQuestions(limit?: number): Promise<QuizQuestion[]>;
@@ -202,9 +203,12 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .insert(races)
       .values(race)
-      .onConflictDoUpdate({ target: races.round, set: race })
       .returning();
     return result;
+  }
+
+  async deleteRacesBySeason(season: number): Promise<void> {
+    await db.delete(races).where(eq(races.season, season));
   }
 
   async updateRace(id: number, data: Partial<Race>): Promise<Race | undefined> {

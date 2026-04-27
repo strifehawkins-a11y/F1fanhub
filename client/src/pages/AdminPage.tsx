@@ -173,6 +173,15 @@ export default function AdminPage() {
     onError: (err: any) => toast({ title: "Sync failed", description: err?.message || "Could not fetch standings.", variant: "destructive" }),
   });
 
+  const syncRacesMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/sync-races", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/races"] });
+      toast({ title: "Race schedule synced", description: data?.message || "Race calendar updated from live data." });
+    },
+    onError: (err: any) => toast({ title: "Race sync failed", description: err?.message || "Could not fetch race schedule.", variant: "destructive" }),
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/articles/${id}/approve`, {}),
     onSuccess: () => {
@@ -734,6 +743,15 @@ export default function AdminPage() {
               >
                 <RefreshCw className={`w-4 h-4 text-blue-400 ${syncStandingsMutation.isPending ? "animate-spin" : ""}`} />
                 {syncStandingsMutation.isPending ? "Syncing..." : "Sync Standings"}
+              </button>
+              <button
+                onClick={() => syncRacesMutation.mutate()}
+                disabled={syncRacesMutation.isPending}
+                data-testid="button-sync-races"
+                className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-racing text-sm font-bold rounded-xl hover:bg-gray-700 transition-all shadow-md shadow-gray-900/20 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 text-orange-400 ${syncRacesMutation.isPending ? "animate-spin" : ""}`} />
+                {syncRacesMutation.isPending ? "Syncing..." : "Sync Race Schedule"}
               </button>
             </div>
           )}

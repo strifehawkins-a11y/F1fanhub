@@ -826,7 +826,7 @@ function buildRssArticles(headlines: string[], recentTitles: string[]): Array<{t
 export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Promise<{
   success: boolean;
   submitted: string[];
-  publishedArticles: Array<{ title: string; slug: string }>;
+  publishedArticles: Array<{ title: string; slug: string; imageUrl?: string; excerpt?: string }>;
   skipped: number;
   noContent: boolean;
   message?: string;
@@ -985,7 +985,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
     }
 
     const submitted: string[] = [];
-    const publishedArticles: Array<{ title: string; slug: string }> = [];
+    const publishedArticles: Array<{ title: string; slug: string; imageUrl?: string; excerpt?: string }> = [];
 
     for (const candidate of batch) {
       const article = await storage.createArticle({
@@ -999,7 +999,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
         imageUrl: candidate.imageUrl,
       });
       submitted.push(article.title);
-      publishedArticles.push({ title: article.title, slug: article.slug });
+      publishedArticles.push({ title: article.title, slug: article.slug, imageUrl: article.imageUrl ?? undefined, excerpt: article.excerpt ?? undefined });
     }
 
     return {
@@ -1104,7 +1104,7 @@ const WEEKLY_TRENDING_PER_RUN = 3;
 export async function generateAndPublishTrendingBatch(): Promise<{
   success: boolean;
   submitted: string[];
-  publishedArticles: Array<{ title: string; slug: string }>;
+  publishedArticles: Array<{ title: string; slug: string; imageUrl?: string; excerpt?: string }>;
   skipped: number;
   noContent: boolean;
   message?: string;
@@ -1168,7 +1168,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
     const batch = rotated.slice(0, remaining);
 
     const submitted: string[] = [];
-    const publishedArticles: Array<{ title: string; slug: string }> = [];
+    const publishedArticles: Array<{ title: string; slug: string; imageUrl?: string; excerpt?: string }> = [];
 
     for (const topic of batch) {
       const article = await storage.createArticle({
@@ -1182,7 +1182,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
         imageUrl: topic.imageUrl,
       });
       submitted.push(article.title);
-      publishedArticles.push({ title: article.title, slug: article.slug });
+      publishedArticles.push({ title: article.title, slug: article.slug, imageUrl: article.imageUrl ?? undefined, excerpt: article.excerpt ?? undefined });
     }
 
     return {

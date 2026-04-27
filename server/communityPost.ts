@@ -129,8 +129,97 @@ function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, "\\$&");
 }
 
+async function postToInstagram(article: { title: string; slug: string; excerpt?: string; imageUrl?: string }): Promise<PostResult> {
+  const accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+  const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+  if (!accountId || !accessToken) return { platform: "instagram", success: false, message: "INSTAGRAM_ACCOUNT_ID or INSTAGRAM_ACCESS_TOKEN not set" };
+
+  const imageUrl = article.imageUrl;
+  if (!imageUrl) return { platform: "instagram", success: false, message: "No image URL — Instagram requires an image" };
+
+  const articleUrl = `${SITE_URL}/article/${article.slug}`;
+  const caption = `${article.title}\n\n${(article.excerpt || "").slice(0, 180)}${article.excerpt && article.excerpt.length > 180 ? "..." : ""}\n\n🔗 ${articleUrl}\n\n#F1 #Formula1 #F1FanHub #FormulaOne`;
+
+  try {
+    // Step 1: Create media container
+    const containerRes = await fetch(
+      `https://graph.facebook.com/v19.0/${accountId}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: imageUrl, caption, access_token: accessToken }),
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+    const containerData = await containerRes.json() as any;
+    if (!containerData.id) return { platform: "instagram", success: false, message: containerData.error?.message || "Container creation failed" };
+
+    // Step 2: Publish the container
+    const publishRes = await fetch(
+      `https://graph.facebook.com/v19.0/${accountId}/media_publish`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+    const publishData = await publishRes.json() as any;
+    if (publishData.id) return { platform: "instagram", success: true };
+    return { platform: "instagram", success: false, message: publishData.error?.message || "Publish failed" };
+  } catch (err: any) {
+    return { platform: "instagram", success: false, message: err?.message };
+  }
+}
+
+async function postToPinterest(article: { title: string; slug: string; excerpt?: string; imageUrl?: string }): Promise<PostResult> {
+  const accessToken = process.env.PINTEREST_ACCESS_TOKEN;
+  const boardId = process.env.PINTEREST_BOARD_ID;
+  if (!accessToken || !boardId) return { platform: "pinterest", success: false, message: "PINTEREST_ACCESS_TOKEN or PINTEREST_BOARD_ID not set" };
+
+  const imageUrl = article.imageUrl;
+  if (!imageUrl) return { platform: "pinterest", success: false, message: "No image URL — Pinterest requires an image" };
+
+  const articleUrl = `${SITE_URL}/article/${article.slug}`;
+  const description = `${(article.excerpt || article.title).slice(0, 480)}`;
+
+  try {
+    const res = await fetch("https://api.pinterest.com/v5/pins", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        board_id: boardId,
+        title: article.title.slice(0, 100),
+        description,
+        link: articleUrl,
+        media_source: {
+          source_type: "image_url",
+          url: imageUrl,
+        },
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    const data = await res.json() as any;
+    if (data.id) return { platform: "pinterest", success: true };
+    return { platform: "pinterest", success: false, message: data.message || `HTTP ${res.status}` };
+  } catch (err: any) {
+    return { platform: "pinterest", success: false, message: err?.message };
+  }
+}
+
+export type CommunityArticle = {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  tags?: string[];
+  imageUrl?: string;
+};
+
 export async function postArticleToCommunities(
-  article: { title: string; slug: string; excerpt?: string; tags?: string[] },
+  article: CommunityArticle,
   log: (msg: string, tag: string) => void
 ): Promise<void> {
   const jobs: Promise<PostResult>[] = [];
@@ -138,6 +227,8 @@ export async function postArticleToCommunities(
   if (process.env.DISCORD_WEBHOOK_URL) jobs.push(postToDiscord(article));
   if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) jobs.push(postToTelegram(article));
   if (process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD) jobs.push(postToBluesky(article));
+  if (process.env.INSTAGRAM_ACCOUNT_ID && process.env.INSTAGRAM_ACCESS_TOKEN) jobs.push(postToInstagram(article));
+  if (process.env.PINTEREST_ACCESS_TOKEN && process.env.PINTEREST_BOARD_ID) jobs.push(postToPinterest(article));
 
   if (jobs.length === 0) {
     log("Community posting skipped — no platforms configured", "community");
@@ -158,7 +249,7 @@ export async function postArticleToCommunities(
 }
 
 export async function postBatchToCommunities(
-  articles: Array<{ title: string; slug: string; excerpt?: string; tags?: string[] }>,
+  articles: Array<CommunityArticle>,
   log: (msg: string, tag: string) => void
 ): Promise<void> {
   for (const article of articles) {

@@ -659,6 +659,19 @@ ${items}  </channel>
     }
   });
 
+  app.post("/api/admin/sync-races", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const { syncRacesFromAPI } = await import("./syncRaces");
+      const result = await syncRacesFromAPI("current");
+      res.json({ success: true, message: `Race schedule updated: ${result.races} races for ${result.season} season.`, ...result });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Race sync failed" });
+    }
+  });
+
   app.post("/api/admin/auto-publish", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
