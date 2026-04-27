@@ -835,13 +835,10 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    const [published, pending] = await Promise.all([
-      storage.getArticles(),
-      storage.getPendingArticles(),
-    ]);
-    const allArticles = [...published, ...pending];
+    // Only count published articles — pending articles must not block the quota or dedup
+    const published = await storage.getArticles();
 
-    const todayAutoArticles = allArticles.filter((a: any) => {
+    const todayAutoArticles = published.filter((a: any) => {
       const dateField = a.publishedAt || a.createdAt;
       const date = dateField ? new Date(dateField).toISOString().split("T")[0] : "";
       return date === todayStr && a.authorId === ADMIN_ID;
@@ -855,12 +852,12 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
         publishedArticles: [],
         skipped: 0,
         noContent: false,
-        message: `Already auto-submitted ${todayAutoArticles.length} article(s) today. Come back tomorrow.`,
+        message: `Already auto-published ${todayAutoArticles.length} article(s) today. Come back tomorrow.`,
       };
     }
 
     const cutoff = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const recentAutoTitles = allArticles
+    const recentAutoTitles = published
       .filter((a: any) => {
         if (a.authorId !== ADMIN_ID) return false;
         const dateField = a.publishedAt || a.createdAt;
@@ -1115,16 +1112,13 @@ export async function generateAndPublishTrendingBatch(): Promise<{
   try {
     const today = new Date();
 
-    const [published, pending] = await Promise.all([
-      storage.getArticles(),
-      storage.getPendingArticles(),
-    ]);
-    const allArticles = [...published, ...pending];
+    // Only use published articles — pending must not block quota or dedup
+    const published = await storage.getArticles();
 
     // Check how many trending articles have already been published this week (Mon–Sun)
     const weekStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7)); // rewind to Monday
-    const thisWeekTrending = allArticles.filter((a: any) => {
+    const thisWeekTrending = published.filter((a: any) => {
       if (a.authorId !== ADMIN_ID || a.section !== "paddock") return false;
       if (!Array.isArray(a.tags) || !a.tags.includes("AutoTrending")) return false;
       const dateField = a.publishedAt || a.createdAt;
@@ -1146,7 +1140,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
 
     // Deduplication window: 60 days for trending topics
     const cutoff = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const recentTitles = allArticles
+    const recentTitles = published
       .filter((a: any) => {
         if (a.authorId !== ADMIN_ID) return false;
         const dateField = a.publishedAt || a.createdAt;

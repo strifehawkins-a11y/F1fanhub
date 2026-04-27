@@ -190,6 +190,25 @@ export default function AdminPage() {
     onError: () => toast({ title: "Error rejecting story", variant: "destructive" }),
   });
 
+  const approveAllMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/approve-all-pending", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+      toast({ title: "All pending articles approved!", description: data?.message });
+    },
+    onError: () => toast({ title: "Bulk approve failed", variant: "destructive" }),
+  });
+
+  const deleteAllPendingMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/admin/delete-all-pending", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
+      toast({ title: "All pending articles deleted", description: data?.message });
+    },
+    onError: () => toast({ title: "Bulk delete failed", variant: "destructive" }),
+  });
+
   // Driver mutation
   const updateDriverMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/standings/drivers/${id}`, data),
@@ -1091,15 +1110,37 @@ export default function AdminPage() {
       {/* ── SUBMISSIONS TAB ── */}
       {tab === "submissions" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="font-racing text-lg font-bold text-gray-900">Community Story Submissions</h2>
               <p className="text-xs text-gray-400 mt-0.5">Review and approve reader-submitted stories before they appear in Articles.</p>
             </div>
             {pendingCount > 0 && (
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-racing text-xs font-bold">
-                {pendingCount} pending
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-racing text-xs font-bold">
+                  {pendingCount} pending
+                </span>
+                <button
+                  data-testid="button-approve-all"
+                  onClick={() => approveAllMutation.mutate()}
+                  disabled={approveAllMutation.isPending || deleteAllPendingMutation.isPending}
+                  className="px-3 py-1.5 rounded-xl bg-green-600 text-white font-racing text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  {approveAllMutation.isPending ? "Approving..." : "Approve All"}
+                </button>
+                <button
+                  data-testid="button-delete-all-pending"
+                  onClick={() => {
+                    if (confirm(`Delete all ${pendingCount} pending submissions? This cannot be undone.`)) {
+                      deleteAllPendingMutation.mutate();
+                    }
+                  }}
+                  disabled={approveAllMutation.isPending || deleteAllPendingMutation.isPending}
+                  className="px-3 py-1.5 rounded-xl bg-gray-200 text-gray-700 font-racing text-xs font-bold hover:bg-red-100 hover:text-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {deleteAllPendingMutation.isPending ? "Deleting..." : "Delete All"}
+                </button>
+              </div>
             )}
           </div>
 

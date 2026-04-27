@@ -502,6 +502,45 @@ ${items}  </channel>
     }
   });
 
+  // Bulk approve all pending submissions at once
+  app.post("/api/admin/approve-all-pending", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const pending = await storage.getPendingArticles();
+      const approved: number[] = [];
+      for (const article of pending) {
+        const result = await storage.approveArticle(article.id);
+        if (result) {
+          approved.push(article.id);
+          if (result.slug) pingAllOnArticlePublish(result.slug, result.title).catch(() => {});
+        }
+      }
+      res.json({ success: true, approved: approved.length, message: `Approved ${approved.length} article(s)` });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Bulk approve failed" });
+    }
+  });
+
+  // Bulk delete all pending submissions at once
+  app.delete("/api/admin/delete-all-pending", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const pending = await storage.getPendingArticles();
+      let deleted = 0;
+      for (const article of pending) {
+        const ok = await storage.rejectArticle(article.id);
+        if (ok) deleted++;
+      }
+      res.json({ success: true, deleted, message: `Deleted ${deleted} pending article(s)` });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Bulk delete failed" });
+    }
+  });
+
   app.get("/api/articles/:idOrSlug", async (req, res) => {
     try {
       const param = req.params.idOrSlug;
