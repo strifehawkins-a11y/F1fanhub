@@ -871,7 +871,19 @@ export default function Dashboard() {
     ...normalizedForum.sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()),
   ];
 
-  const heroArticle = paddockArticles[0] || null;
+  // Slider shows paddock articles first, then fills with the newest news articles
+  // so auto-published articles always appear even if no paddock articles are set
+  const sliderArticles = (() => {
+    const paddock = paddockArticles.slice(0, 5);
+    if (paddock.length >= 5) return paddock;
+    const usedIds = new Set(paddock.map((a: any) => a.id));
+    const recentNews = regularArticles
+      .filter((a: any) => !usedIds.has(a.id))
+      .slice(0, 8 - paddock.length);
+    return [...paddock, ...recentNews];
+  })();
+
+  const heroArticle = sliderArticles[0] || null;
   const gridArticles = newsArticles;
 
   return (
@@ -907,8 +919,8 @@ export default function Dashboard() {
         <div className="space-y-4">
           {articlesLoading ? (
             <Skeleton className="h-[340px] w-full rounded-2xl" />
-          ) : paddockArticles.length > 0 ? (
-            <DashboardSlider articles={paddockArticles} />
+          ) : sliderArticles.length > 0 ? (
+            <DashboardSlider articles={sliderArticles} />
           ) : (
             <div className="relative rounded-2xl overflow-hidden flex items-center justify-center min-h-[220px]" style={{ background: "linear-gradient(135deg, #0d0005 0%, #1a0008 40%, #3d0015 70%, #2d0010 100%)" }}>
               <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
