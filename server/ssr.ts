@@ -334,7 +334,7 @@ function buildCompleteHomepageHtml(articles: any[], bundles: BundleTags): string
     const dateStr = a.publishedAt
       ? new Date(a.publishedAt).toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" })
       : "";
-    const ex = a.excerpt ? a.excerpt.slice(0, 140) : excerpt(a.content || "", 140);
+    const ex = a.excerpt ? a.excerpt.slice(0, 260) : excerpt(a.content || "", 260);
     return `
     <article class="hp-card" itemscope itemtype="https://schema.org/NewsArticle">
       ${a.imageUrl ? `<a href="/articles/${esc(slug)}"><img src="${esc(a.imageUrl)}" alt="${esc(a.title)}" class="hp-card-img" loading="lazy" itemprop="image"></a>` : ""}
