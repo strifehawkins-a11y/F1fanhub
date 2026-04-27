@@ -134,15 +134,16 @@ export default function AdminPage() {
     onSuccess: (data: any) => {
       const submitted: string[] = data?.submitted || [];
       if (submitted.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
         queryClient.invalidateQueries({ queryKey: ["/api/articles/pending"] });
         const label = submitted.length === 1
           ? `"${submitted[0]}"`
           : `${submitted.length} articles`;
         toast({
-          title: `${submitted.length} article${submitted.length > 1 ? "s" : ""} submitted for review`,
-          description: `${label} ${submitted.length > 1 ? "are" : "is"} waiting in your Submissions tab.`,
+          title: `${submitted.length} article${submitted.length > 1 ? "s" : ""} published!`,
+          description: `${label} ${submitted.length > 1 ? "are" : "is"} now live on the site.`,
         });
-        setTab("submissions");
+        setTab("articles");
       } else if (data?.noContent) {
         toast({ title: "Nothing new to generate", description: data.message });
       } else {
