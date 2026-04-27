@@ -46,3 +46,7 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "github:1.0.0", "javascri
 
 [userenv.shared]
 GOOGLE_CALLBACK_URL = "https://7eefcd7e-9b06-4511-ace4-c6192a40acf6-00-2o3xe9f1aflqs.riker.replit.dev/api/auth/google/callback"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
