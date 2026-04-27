@@ -993,7 +993,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
         excerpt: candidate.excerpt,
         content: candidate.content,
         authorId: ADMIN_ID,
-        section: "news",
+        section: "paddock",
         tags: candidate.tags,
         sortOrder: candidate.sortOrder,
         imageUrl: candidate.imageUrl,
