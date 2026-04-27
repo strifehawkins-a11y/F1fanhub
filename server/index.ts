@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { generateAndPublishBatch } from "./autoPublish";
+import { generateAndPublishBatch, generateAndPublishTrendingBatch } from "./autoPublish";
 import { syncStandingsFromAPI } from "./syncStandings";
 import { postBatchToReddit } from "./redditPost";
 
@@ -142,6 +142,36 @@ app.use((req, res, next) => {
     }, msUntil);
   }
   scheduleNextAutoPublish();
+
+  // Weekly trending auto-publish — fires every Monday at 07:00 UTC
+  function scheduleNextWeeklyTrendingPublish() {
+    const now = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 7, 0, 0, 0));
+    // Advance to next Monday
+    const daysUntilMonday = (8 - next.getUTCDay()) % 7 || 7;
+    if (next.getUTCDay() === 1 && next.getTime() > now.getTime()) {
+      // today is Monday and 07:00 hasn't passed yet — fire today
+    } else {
+      next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+    }
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 7);
+    const msUntil = next.getTime() - now.getTime();
+    log(`Weekly trending publish scheduled in ${Math.round(msUntil / 3600000)}h (${next.toISOString()})`, "scheduler");
+    setTimeout(async () => {
+      try {
+        const result = await generateAndPublishTrendingBatch();
+        if (result.submitted.length > 0) {
+          log(`Weekly trending: published ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
+        } else {
+          log(`Weekly trending skipped: ${result.message}`, "scheduler");
+        }
+      } catch (err: any) {
+        log(`Weekly trending error: ${err?.message}`, "scheduler");
+      }
+      scheduleNextWeeklyTrendingPublish();
+    }, msUntil);
+  }
+  scheduleNextWeeklyTrendingPublish();
 
   // Weekly standings sync — fires every Monday at 08:00 UTC (after race weekends)
   function scheduleNextStandingsSync() {

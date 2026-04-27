@@ -1027,6 +1027,184 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
   }
 }
 
+// ─── Weekly Trending Topics ───────────────────────────────────────────────────
+
+const TRENDING_TOPICS: Topic[] = [
+  {
+    keyword: "Vettel Comeback",
+    title: "Sebastian Vettel Comeback Rumours: What Would a Return to the Grid Actually Look Like?",
+    tags: ["Paddock", "Vettel", "Drivers", "Rumours"],
+    imageUrl: IMGS.helmet,
+    content: `Sebastian Vettel retired from Formula 1 at the end of the 2022 season after 16 years and four World Championships, citing a desire to spend more time with his family and pursue environmental causes. Yet paddock rumours about a potential return resurface with remarkable persistence — and the question of what a Vettel comeback would actually look like in 2025 or 2026 is more complex than it might appear.\n\nVettel left the sport in his prime competitive years by historical standards. At 37, the age he retired, drivers like Alain Prost and Michael Schumacher were still competing at the highest level. His physical condition remained exceptional; the decision was entirely one of personal priorities rather than diminishing capability.\n\nThe grid landscape has changed significantly since his departure. The cars are fundamentally different — the 2022 ground-effect regulations that arrived in his final season continued evolving, and the 2026 regulations will represent another step change. A returning Vettel would face a learning curve measured in months, not laps, to find the new cars' limits.\n\nThe seat question is equally complex. The top teams — Red Bull, Ferrari, Mercedes, McLaren — are all contracted for at least the near future. Mid-grid seats exist, but returning to a team unlikely to compete for wins would risk undermining the legacy he carefully preserved by leaving at a high point. Vettel himself has repeatedly dismissed the rumours, and there is no credible indication that a return is being actively discussed.\n\nWhat keeps the conversation alive is simple: Vettel remains one of the most naturally gifted drivers of his generation, and the sport misses his particular combination of technical intelligence, wit, and competitive intensity. Whether that makes a comeback more or less likely is, ultimately, his decision alone.`,
+  },
+  {
+    keyword: "McLaren Macarena Wing",
+    title: "The McLaren 'Macarena Wing' Controversy: How a Flexible Rear Wing Shook the Paddock",
+    tags: ["Paddock", "McLaren", "Technical Controversy", "Aerodynamics"],
+    imageUrl: IMGS.aero,
+    content: `The paddock controversy over McLaren's rear wing behaviour — nicknamed the "Macarena wing" by rivals who observed what they described as unusual flexing patterns under load — became one of the defining technical disputes of the 2024 and 2025 seasons. Understanding what the teams were arguing about, and why the FIA's response mattered, requires a look at how flexi-wing rules work and why they are so difficult to police.\n\nThe FIA's technical regulations prohibit aerodynamic components from deflecting beyond defined limits under load. The rules are tested through a series of static deflection tests — fixed loads applied to the wing structure at the technical delegate's request. If the wing passes the test, it is legal.\n\nThe challenge is that static tests cannot fully replicate dynamic loads at racing speeds. A wing structure that passes a static test can, in theory, behave differently under aerodynamic loads at 300 km/h — loads that change continuously with speed, turbulence, and yaw angle. Teams have historically designed structures that pass the prescribed tests while behaving more flexibly at speed than the regulations intend.\n\nMcLaren's response to the controversy was that their wing passed all FIA tests and was therefore compliant. Their rivals' response was that the tests were insufficient to capture real-world behaviour. The FIA responded by updating their deflection test protocols — a standard pattern in technical disputes where the regulations chase the development.\n\nWhat made this particular controversy significant was timing. McLaren's performance advantage through 2024 coincided with their wing debate, and rivals arguing that flexing aerodynamic components contributed to that advantage found a receptive audience in the paddock press corps. Whether the wing controversy genuinely affected lap times remains, as with most such disputes, ultimately unproven.`,
+  },
+  {
+    keyword: "2026 Championship Standings",
+    title: "2026 F1 Championship: The Midseason Power Struggle That Will Define the Title",
+    tags: ["Paddock", "2026 Season", "Championship", "Analysis"],
+    imageUrl: IMGS.data,
+    content: `The 2026 Formula 1 World Championship was always going to be unlike any that preceded it. The arrival of entirely new power unit regulations — eliminating the MGU-H, boosting electrical deployment to levels that dwarf the previous era, and fundamentally redistributing performance between manufacturers — meant the season began with genuine uncertainty at the front of the field for the first time in years.\n\nThe midseason picture has clarified the competitive hierarchy, but not as cleanly as any single team would like. The power unit performance gaps that defined 2014-2021 have partially reasserted themselves, with the manufacturers who most successfully developed the new electrical architecture gaining a straight-line advantage that is translating into qualifying and race pace.\n\nThe human story remains paramount. Championship leads have changed multiple times — a rarity in recent seasons characterised by one team's dominance. Drivers who had been written off as title contenders after slow starts have resurfaced as genuine factors through reliability and strategic execution.\n\nThe constructor battle is equally close. Points are separated by margins that one race result — a safety car, a mechanical failure, a strategic call that swings the wrong way — can swing entirely. Teams that entered the season confident in their new machinery have found development surprises, both positive and negative, as the year has progressed.\n\nWhat emerges from the midseason view is a championship that will be decided not on a single memorable afternoon but through the accumulation of marginal gains and marginal mistakes across 24 rounds. The title will belong to the driver and team who make the fewest errors in the final six races — and that is the best possible advertisement for the sport.`,
+  },
+  {
+    keyword: "Red Bull Driver Lineup",
+    title: "Red Bull's Driver Future: The Selection Process That Defines a Champion Team",
+    tags: ["Paddock", "Red Bull", "Drivers", "Team News"],
+    imageUrl: IMGS.helmet,
+    content: `Red Bull Racing's approach to driver management is one of the most studied — and most controversial — in Formula 1. Their junior programme has produced multiple World Champions and has also been the source of driver departures that became major storylines. Understanding how the team selects and manages its drivers reveals much about how they operate as an organisation.\n\nRed Bull's senior seat philosophy has historically prioritised proven performance over development potential. Once a driver demonstrates championship-level pace, they are protected. When performance declines relative to their teammate — as happened with Mark Webber in 2013, with Daniel Ricciardo's departure in 2018, and with various junior team transitions — the team's decision-making is ruthlessly data-driven.\n\nThe junior programme feeds the senior team but also creates surplus. Talented drivers from Red Bull's academy who find no senior seat available face a choice: stay and wait, or leave to pursue opportunities elsewhere. Several drivers who departed the Red Bull family have gone on to significant success at rival teams — a fact that the team's management has occasionally had to answer for.\n\nThe current lineup question centres on long-term succession planning. As the sport's competitive landscape shifts with 2026 regulations, getting the driver pairing right — balancing experience with development potential, and managing two strong personalities within the same garage — becomes a strategic decision with championship implications across multiple seasons, not just one.\n\nFor a team that has become accustomed to championship success, driver selection is not merely a human resources question. It is an engineering decision: which pairing generates the best combined data set for car development, produces the most constructors' points, and places the team in the best position to extend what has been an extraordinary period of dominance.`,
+  },
+  {
+    keyword: "Ferrari Leadership",
+    title: "Ferrari's New Era: How Structural Changes at Maranello Are Reshaping the Team",
+    tags: ["Paddock", "Ferrari", "Team News", "Management"],
+    imageUrl: IMGS.speed,
+    content: `Ferrari's relationship with structural change is complicated by history. The Scuderia has, over its 75-year World Championship history, restructured its technical leadership so many times that the pattern has become a story in itself: a disappointing season triggers a personnel review, a personnel review triggers a restructure, a restructure triggers optimism, and the cycle begins again.\n\nWhat makes the current period at Ferrari different — or at least, what the team argues makes it different — is the depth of the structural transformation underway. Rather than simply changing the technical director while leaving the underlying processes intact, the team has invested in rebuilding their organisational methodology, integrating lessons from teams that have successfully transitioned from midfield contenders to championship-winning operations.\n\nThe results have been, by Ferrari's historical standards, encouraging in some respects and frustrating in others. Race pace has improved relative to benchmarks. Qualifying pace has been a consistent strength. Strategic errors — the category that has historically cost Ferrari more points than any technical shortcoming — have decreased in frequency if not entirely disappeared.\n\nThe question that follows Ferrari through every season is whether the change is structural or cyclical. Has Maranello genuinely solved the organisational problems that have prevented title challenges from converting into titles? Or will the pressure of a championship fight, applied to a system that has not been stress-tested in a genuine title decider, reveal the same fractures?\n\nThe honest answer is that this question cannot be answered until Ferrari are in that position. Building a car capable of challenging for the championship is necessary but not sufficient. Winning it requires execution under conditions that only a championship fight produces.`,
+  },
+  {
+    keyword: "Mercedes Rebuild",
+    title: "Mercedes' Championship Rebuild: Inside the W-Series Recovery Project",
+    tags: ["Paddock", "Mercedes", "Team News", "Technical"],
+    imageUrl: IMGS.tech,
+    content: `The period from 2022 to the present represents the longest stretch of non-championship dominance in Mercedes' recent history, and the team's response to losing their position at the front of the grid has been one of the most closely watched technical and organisational stories in the sport.\n\nMercedes' competitive decline began with the ground-effect regulations of 2022, which exposed a design philosophy — the zero-pod concept — that failed to achieve its intended aerodynamic benefits. The team's willingness to persist with the concept through much of 2022 before pivoting represents, in retrospect, one of the costliest development decisions of the modern regulatory era.\n\nThe rebuilding process accelerated from 2023 onwards. Technical leadership evolved, design parameters shifted, and the team began publicly acknowledging problems that in their dominant years would have been managed internally. This transparency — or relative transparency — was a cultural shift, whether strategic or genuine.\n\nThe 2026 regulations represent an opportunity that Mercedes' power unit leadership has targeted specifically. The new electrical architecture aligns with manufacturing competencies they have developed internally, and their experience of transitioning to new regulatory frameworks in 2014 — when their engine concept gave them a multi-year advantage — informs their development approach.\n\nWhether 2026 delivers another Mercedes era of dominance is unknowable in advance. What is clear is that the team's response to adversity — measured, methodical, and focused on structural improvement rather than reactive personnel changes — has maintained their credibility as a championship-capable organisation even during the years when the results did not reflect it.`,
+  },
+  {
+    keyword: "F1 2026 Rules",
+    title: "F1's 2026 Revolution: What the New Rules Mean for Racing On Track",
+    tags: ["Paddock", "2026 Regulations", "Technical", "Analysis"],
+    imageUrl: IMGS.car,
+    content: `The 2026 Formula 1 technical regulations represent the most comprehensive rewrite of the sport's rules since 2014 — and arguably since the ground-effect era of the early 1980s. Understanding what changed, why it changed, and what it means for racing on track requires separating the engineering reality from the political motivations that shaped the regulations.\n\nThe power unit changes are the most visible headline. The elimination of the MGU-H removes the most technically complex and expensive component of the previous architecture, reducing the barrier to entry for new manufacturers and simplifying reliability management. The increase in electrical deployment — the MGU-K is no longer power-limited in the same way — means electrical power now represents a larger proportion of total output than before.\n\nThe aerodynamic regulations attempt to balance two historically contradictory goals: generating sufficient downforce for fast, committed corner-taking, while producing cars that can follow closely enough for overtaking. The 2022 ground-effect regulations improved following ability; the 2026 regulations refine the approach, with active aerodynamic elements — a controlled form of movable aerodynamics — permitted for the first time in decades.\n\nThe active aerodynamics provision has been controversial in the paddock. The concept of a system that adjusts wing angles based on speed conditions shares conceptual DNA with DRS but operates differently in practice. Whether it achieves its intended effect of allowing closer racing at a wider range of circuit types will only be demonstrable after a full season of data.\n\nFor fans, the on-track effect of 2026 has been a recalibration of the competitive hierarchy — new regulations always shuffle the deck — combined with power unit sounds and performance characteristics that differ meaningfully from the previous era. Whether the racing itself improves, stays the same, or declines relative to the 2022-2025 period will be the ultimate verdict on whether the FIA and F1's regulatory ambitions were achieved.`,
+  },
+  {
+    keyword: "Norris Title Challenge",
+    title: "Lando Norris: Can McLaren's Lead Driver Convert Pace into a Championship?",
+    tags: ["Paddock", "Norris", "McLaren", "Championship"],
+    imageUrl: IMGS.helmet,
+    content: `Lando Norris's development from the youngest British driver to score points on his F1 debut into a genuine World Championship contender represents one of the most compelling driver stories in the sport's recent history. The question now is not whether Norris has the pace — that has been demonstrated beyond reasonable doubt — but whether he has the complete package of skills required to win a championship in the specific conditions of a title fight.\n\nNorris's natural talent was evident from his first season in 2019. His speed in single-lap qualifying consistently matched or exceeded teammates and rivals with years more experience. His race craft developed quickly, and his relationship with his engineers — open, technically curious, analytically minded — made him a valuable development driver as well as a racing one.\n\nThe championship contention question reveals the areas where development is still ongoing. In the 2024 season, when Norris had the machinery to genuinely challenge Max Verstappen for the title in the second half of the year, the points did not convert at the rate the pace suggested they should. Mistakes in high-pressure moments, occasionally aggressive strategy calls, and the accumulated weight of racing against a four-time champion who had mastered exactly these situations — all contributed to a gap at season's end that the raw performance comparison did not fully explain.\n\nMcLaren's task is to build a championship-winning environment around Norris at the same time as Norris builds his championship-winning mentality. These two processes need to synchronise — having the right driver in the right car at the right moment is a necessary condition that is rarer than it looks from the outside.\n\nWhat makes Norris a compelling figure is his self-awareness about exactly this question. He does not deflect from the challenge; he discusses it directly and with the kind of analytical honesty that suggests the learning is genuine.`,
+  },
+  {
+    keyword: "Verstappen Legacy",
+    title: "Max Verstappen's Legacy: Redefining What Dominance Looks Like in F1",
+    tags: ["Paddock", "Verstappen", "Red Bull", "F1 History"],
+    imageUrl: IMGS.speed,
+    content: `Four World Championships. Fifty-nine race victories. The highest single-season win rate in Formula 1 history. By any statistical measure, Max Verstappen has already secured a place in the conversation about the sport's greatest drivers — and he has done so while still in the early phase of what could be a fifteen-year career.\n\nVerstappen's rise was unconventional. He became the youngest driver to start a Formula 1 race at 17, and his early career was marked as much by spectacular errors as spectacular pace. Red Bull's decision to promote him mid-season to their senior team in 2016 — replacing Daniil Kvyat at just 18 — accelerated a learning process that might otherwise have taken years.\n\nThe transformation from raw, occasionally reckless talent to the controlled, devastatingly effective champion of the title-fight years happened between 2017 and 2020. In these seasons, largely driving equipment that could not challenge for championships, Verstappen refined his approach without the pressure of title mathematics. He learned how to manage tyres, how to manage championships, and how to take risks that were calculated rather than impulsive.\n\nThe 2021 title fight with Lewis Hamilton defined his championship career's first chapter. The year-long battle — intense, controversial, occasionally bitter — was resolved in the most dramatic possible circumstances on the final lap in Abu Dhabi. Verstappen's management of that season, which included retirements and penalties alongside extraordinary drives, demonstrated the full range of his capabilities.\n\nThe years that followed — 2022, 2023, 2024 — were dominated to degrees unprecedented in the modern era. The 2023 campaign, with 19 wins from 22 races, sits alone in the sport's statistical record. Whether this dominance reflects Verstappen's individual genius or Red Bull's engineering superiority is a question the sport will debate for decades — which is, in itself, a sign of how significant his era has been.`,
+  },
+  {
+    keyword: "Paddock Social Media",
+    title: "F1's Social Media Transformation: How the Paddock Went Global",
+    tags: ["Paddock", "Social Media", "Business of F1", "Fan Engagement"],
+    imageUrl: IMGS.data,
+    content: `Formula 1's digital transformation over the past decade has been as significant to the sport's commercial position as any technical regulation change. The shift from a sport that was largely inaccessible to younger audiences and non-European markets to one of the most globally followed sporting properties on social media was not accidental — it was the result of deliberate strategy, changing ownership priorities, and the emergence of content formats that suited F1's visual drama.\n\nLiberty Media's acquisition of F1 in 2017 brought explicit focus on digital audience development. Under the previous commercial era, much of the sport's visual content was restricted or licensed in ways that limited organic sharing. The new approach opened the content ecosystem — allowing fan-created content, shorter highlight clips, behind-the-scenes access, and a social media presence that treated platforms as primary rather than secondary distribution channels.\n\nDrive to Survive on Netflix from 2019 onwards became the most significant single catalyst for audience growth in the sport's history. Its effects were measurable: viewership demographics in the United States shifted younger, audience size in markets where F1 had historically been a niche property grew significantly, and the paddock personalities who featured most prominently in the series became globally recognisable figures beyond their core sporting fanbase.\n\nThe transformation has created tensions as well as opportunities. Drivers who became social media personalities found their public identities increasingly separate from their on-track identities. Teams that invested in content operations found themselves managing media organisations as well as racing ones. The balance between authentic paddock access and controlled messaging — between the documentary that builds genuine connection and the promotional content that does not — is an ongoing negotiation.\n\nThe global F1 fanbase that now follows the sport on multiple platforms simultaneously — watching races on broadcast, following driver social accounts, engaging with team content — represents both the opportunity and the challenge of maintaining authentic sporting theatre in an era of total media saturation.`,
+  },
+];
+
+const WEEKLY_TRENDING_PER_RUN = 3;
+
+export async function generateAndPublishTrendingBatch(): Promise<{
+  success: boolean;
+  submitted: string[];
+  skipped: number;
+  noContent: boolean;
+  message?: string;
+}> {
+  try {
+    const today = new Date();
+
+    const [published, pending] = await Promise.all([
+      storage.getArticles(),
+      storage.getPendingArticles(),
+    ]);
+    const allArticles = [...published, ...pending];
+
+    // Check how many trending articles have already been published this week (Mon–Sun)
+    const weekStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7)); // rewind to Monday
+    const thisWeekTrending = allArticles.filter((a: any) => {
+      if (a.authorId !== ADMIN_ID || a.section !== "paddock") return false;
+      if (!Array.isArray(a.tags) || !a.tags.includes("AutoTrending")) return false;
+      const dateField = a.publishedAt || a.createdAt;
+      return dateField && new Date(dateField) >= weekStart;
+    });
+
+    if (thisWeekTrending.length >= WEEKLY_TRENDING_PER_RUN) {
+      return {
+        success: false,
+        submitted: [],
+        skipped: 0,
+        noContent: false,
+        message: `Already published ${thisWeekTrending.length} trending paddock article(s) this week. Next batch on Monday.`,
+      };
+    }
+
+    const remaining = WEEKLY_TRENDING_PER_RUN - thisWeekTrending.length;
+
+    // Deduplication window: 60 days for trending topics
+    const cutoff = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const recentTitles = allArticles
+      .filter((a: any) => {
+        if (a.authorId !== ADMIN_ID) return false;
+        const dateField = a.publishedAt || a.createdAt;
+        return dateField ? new Date(dateField) > cutoff : false;
+      })
+      .map((a: any) => a.title as string);
+
+    const available = TRENDING_TOPICS.filter(t => !alreadyCovered(recentTitles, t.keyword));
+
+    if (available.length === 0) {
+      return {
+        success: false,
+        submitted: [],
+        skipped: 0,
+        noContent: true,
+        message: "All trending topics have been published recently. Topics rotate on a 60-day window.",
+      };
+    }
+
+    // Rotate: use a deterministic week-based offset so the selection cycles through the list
+    const weekNumber = Math.floor(today.getTime() / (7 * 24 * 60 * 60 * 1000));
+    const offset = weekNumber % available.length;
+    const rotated = [...available.slice(offset), ...available.slice(0, offset)];
+    const batch = rotated.slice(0, remaining);
+
+    const submitted: string[] = [];
+
+    for (const topic of batch) {
+      const article = await storage.createArticle({
+        title: topic.title,
+        excerpt: topic.content.split("\n")[0].substring(0, 200) + "...",
+        content: topic.content,
+        authorId: ADMIN_ID,
+        section: "paddock",
+        tags: [...topic.tags, "AutoTrending"],
+        sortOrder: 0,
+        imageUrl: topic.imageUrl,
+      });
+      submitted.push(article.title);
+    }
+
+    return {
+      success: true,
+      submitted,
+      skipped: 0,
+      noContent: false,
+      message: `Published ${submitted.length} trending paddock article(s) for this week.`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      submitted: [],
+      skipped: 0,
+      noContent: false,
+      message: err?.message || "Unknown error during weekly trending publish",
+    };
+  }
+}
+
+// Legacy single-article wrapper used by scheduler if needed
 export async function generateAndPublishArticle(): Promise<{
   success: boolean;
   title?: string;
