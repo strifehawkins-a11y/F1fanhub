@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { generateAndPublishBatch } from "./autoPublish";
 import { syncStandingsFromAPI } from "./syncStandings";
+import { postBatchToReddit } from "./redditPost";
 
 const app = express();
 const httpServer = createServer(app);
@@ -126,6 +127,9 @@ app.use((req, res, next) => {
         const result = await generateAndPublishBatch(5);
         if (result.submitted.length > 0) {
           log(`Auto-published batch: ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
+          if (result.publishedArticles.length > 0) {
+            await postBatchToReddit(result.publishedArticles, log);
+          }
         } else if (result.noContent) {
           log(`Auto-publish: no fresh content available. ${result.message}`, "scheduler");
         } else {

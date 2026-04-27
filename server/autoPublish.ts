@@ -826,6 +826,7 @@ function buildRssArticles(headlines: string[], recentTitles: string[]): Array<{t
 export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Promise<{
   success: boolean;
   submitted: string[];
+  publishedArticles: Array<{ title: string; slug: string }>;
   skipped: number;
   noContent: boolean;
   message?: string;
@@ -851,6 +852,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
       return {
         success: false,
         submitted: [],
+        publishedArticles: [],
         skipped: 0,
         noContent: false,
         message: `Already auto-submitted ${todayAutoArticles.length} article(s) today. Come back tomorrow.`,
@@ -969,6 +971,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
       return {
         success: false,
         submitted: [],
+        publishedArticles: [],
         skipped: 0,
         noContent: true,
         message: `All topics have been published recently. New race content will be available closer to ${nextRaceName}.`,
@@ -985,9 +988,10 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
     }
 
     const submitted: string[] = [];
+    const publishedArticles: Array<{ title: string; slug: string }> = [];
 
     for (const candidate of batch) {
-      const article = await storage.submitArticle({
+      const article = await storage.createArticle({
         title: candidate.title,
         excerpt: candidate.excerpt,
         content: candidate.content,
@@ -998,11 +1002,13 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
         imageUrl: candidate.imageUrl,
       });
       submitted.push(article.title);
+      publishedArticles.push({ title: article.title, slug: article.slug });
     }
 
     return {
       success: true,
       submitted,
+      publishedArticles,
       skipped: Math.max(0, count - candidates.length),
       noContent: candidates.length < count,
       message: candidates.length < count
@@ -1013,6 +1019,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
     return {
       success: false,
       submitted: [],
+      publishedArticles: [],
       skipped: 0,
       noContent: false,
       message: err?.message || "Unknown error during auto-publish batch",
