@@ -1107,6 +1107,7 @@ const WEEKLY_TRENDING_PER_RUN = 3;
 export async function generateAndPublishTrendingBatch(): Promise<{
   success: boolean;
   submitted: string[];
+  publishedArticles: Array<{ title: string; slug: string }>;
   skipped: number;
   noContent: boolean;
   message?: string;
@@ -1134,6 +1135,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
       return {
         success: false,
         submitted: [],
+        publishedArticles: [],
         skipped: 0,
         noContent: false,
         message: `Already published ${thisWeekTrending.length} trending paddock article(s) this week. Next batch on Monday.`,
@@ -1158,6 +1160,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
       return {
         success: false,
         submitted: [],
+        publishedArticles: [],
         skipped: 0,
         noContent: true,
         message: "All trending topics have been published recently. Topics rotate on a 60-day window.",
@@ -1171,6 +1174,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
     const batch = rotated.slice(0, remaining);
 
     const submitted: string[] = [];
+    const publishedArticles: Array<{ title: string; slug: string }> = [];
 
     for (const topic of batch) {
       const article = await storage.createArticle({
@@ -1184,11 +1188,13 @@ export async function generateAndPublishTrendingBatch(): Promise<{
         imageUrl: topic.imageUrl,
       });
       submitted.push(article.title);
+      publishedArticles.push({ title: article.title, slug: article.slug });
     }
 
     return {
       success: true,
       submitted,
+      publishedArticles,
       skipped: 0,
       noContent: false,
       message: `Published ${submitted.length} trending paddock article(s) for this week.`,
@@ -1197,6 +1203,7 @@ export async function generateAndPublishTrendingBatch(): Promise<{
     return {
       success: false,
       submitted: [],
+      publishedArticles: [],
       skipped: 0,
       noContent: false,
       message: err?.message || "Unknown error during weekly trending publish",

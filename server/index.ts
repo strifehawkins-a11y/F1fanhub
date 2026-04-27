@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { generateAndPublishBatch, generateAndPublishTrendingBatch } from "./autoPublish";
 import { syncStandingsFromAPI } from "./syncStandings";
 import { postBatchToReddit } from "./redditPost";
+import { postBatchToCommunities } from "./communityPost";
 
 const app = express();
 const httpServer = createServer(app);
@@ -129,6 +130,7 @@ app.use((req, res, next) => {
           log(`Auto-published batch: ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
           if (result.publishedArticles.length > 0) {
             await postBatchToReddit(result.publishedArticles, log);
+            await postBatchToCommunities(result.publishedArticles, log);
           }
         } else if (result.noContent) {
           log(`Auto-publish: no fresh content available. ${result.message}`, "scheduler");
@@ -162,6 +164,9 @@ app.use((req, res, next) => {
         const result = await generateAndPublishTrendingBatch();
         if (result.submitted.length > 0) {
           log(`Weekly trending: published ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
+          if (result.publishedArticles.length > 0) {
+            await postBatchToCommunities(result.publishedArticles, log);
+          }
         } else {
           log(`Weekly trending skipped: ${result.message}`, "scheduler");
         }
