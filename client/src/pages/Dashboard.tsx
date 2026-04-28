@@ -675,7 +675,7 @@ const F1_SLIDE_GRADIENTS = [
 ];
 
 function DashboardSlider({ articles }: { articles: any[] }) {
-  const slides = articles.slice(0, 5);
+  const slides = articles.slice(0, 10);
   const [current, setCurrent] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -780,7 +780,7 @@ function DashboardSlider({ articles }: { articles: any[] }) {
                     key={i}
                     onClick={() => goTo(i)}
                     data-testid={`button-dash-slide-${i}`}
-                    className="relative w-14 py-3 flex items-center justify-center transition-all"
+                    className="relative w-10 py-3 flex items-center justify-center transition-all"
                     style={{ background: i === current ? "rgba(196,18,48,0.15)" : "transparent" }}
                   >
                     <div className={`absolute top-0 left-0 right-0 h-[3px] transition-all ${i === current ? "bg-primary" : "bg-transparent"}`} />
