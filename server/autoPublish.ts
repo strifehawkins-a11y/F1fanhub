@@ -3,75 +3,41 @@ import { storage } from "./storage";
 const ADMIN_ID = "seed-admin";
 const MAX_PER_DAY = 10;
 
-// Large pool of real F1 imagery — cars, drivers, pit lane, circuits, podiums
-// Each category has multiple options so articles always get a fresh, varied image
-const IMG_POOL: Record<string, string[]> = {
-  car: [
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1547124010-9f501dc2ec65?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1593433945827-e6b7c6a5b2dd?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1596558450255-7c0d7c420081?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1618338129595-2bbb0e73aadf?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1584448097764-374f3f48067d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1630511282948-01b0ad33a0b0?auto=format&fit=crop&w=1200&q=80",
-  ],
-  driver: [
-    "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1615464994218-2f3e16c42e51?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1614518921673-2b010ac3d5cd?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1627838029849-5d1c0d09bca0?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1659735427647-09b73ad8d05c?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1610975328458-0bc08ea9a18a?auto=format&fit=crop&w=1200&q=80",
-  ],
-  pit: [
-    "https://images.unsplash.com/photo-1607603750909-408e193868c7?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1612281226518-fc34b60e2d90?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1633358080782-57af48edea79?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1621135802920-133df287f89c?auto=format&fit=crop&w=1200&q=80",
-  ],
-  circuit: [
-    "https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1585241920473-b472eb9ffbf2?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1524514587686-e2909d726e9b?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1575999502951-4ab25b5ca889?auto=format&fit=crop&w=1200&q=80",
-  ],
-  podium: [
-    "https://images.unsplash.com/photo-1524514587686-e2909d726e9b?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=1200&q=80",
-  ],
-  tech: [
-    "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1567761616-a178fd05d9c5?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1630511282948-01b0ad33a0b0?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1639155316527-15a7c00bf7e6?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
-  ],
-};
+// Verified F1 imagery — all IDs confirmed 200 OK on Unsplash
+// Only use IDs that have been explicitly verified to exist and show motorsport/F1 content
+const F1_IMAGES = [
+  // F1 cars on track / aerodynamics
+  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=1200&q=80",
+  // Pit stop / mechanics
+  "https://images.unsplash.com/photo-1607603750909-408e193868c7?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1621135802920-133df287f89c?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=80",
+  // Driver / cockpit
+  "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?auto=format&fit=crop&w=1200&q=80",
+  // Circuit / aerial
+  "https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=1200&q=80",
+  // Data / tech screens
+  "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+  // Podium / celebration
+  "https://images.unsplash.com/photo-1524514587686-e2909d726e9b?auto=format&fit=crop&w=1200&q=80",
+  // Grand prix crowd / grandstands
+  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80",
+];
 
-// Randomly pick one image from a category; fall back to car pool if category missing
-function pickImg(category: keyof typeof IMG_POOL | string): string {
-  const pool = IMG_POOL[category] ?? IMG_POOL.car;
-  return pool[Math.floor(Math.random() * pool.length)];
+// Pick a random verified F1 image — rotates through the pool for variety
+let _imgIdx = Math.floor(Math.random() * F1_IMAGES.length);
+function pickImg(_category?: string): string {
+  const img = F1_IMAGES[_imgIdx % F1_IMAGES.length];
+  _imgIdx++;
+  return img;
 }
 
 // Backward-compat shim — keeps all existing IMGS.xxx references working
 const IMGS = new Proxy({} as Record<string, string>, {
-  get(_: Record<string, string>, prop: string) {
-    const map: Record<string, string> = {
-      aero: "car", track: "circuit", car: "car", pit: "pit", tyre: "pit",
-      tech: "tech", cockpit: "driver", speed: "car", circuit: "circuit",
-      helmet: "driver", data: "tech", carbon: "tech", driver: "driver",
-      podium: "podium", crowd: "circuit",
-    };
-    return pickImg(map[prop] ?? "car");
+  get(_: Record<string, string>, _prop: string) {
+    return pickImg();
   },
 });
 
