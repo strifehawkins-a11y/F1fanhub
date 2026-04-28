@@ -924,7 +924,7 @@ export async function generateAndPublishBatch(count: number = MAX_PER_DAY): Prom
 
     if (today.getDay() === 2 || today.getDay() === 3) {
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const standingsThisWeek = allArticles.some((a: any) => {
+      const standingsThisWeek = published.some((a: any) => {
         const dateField = a.publishedAt || a.createdAt;
         return dateField && new Date(dateField) > weekAgo && a.authorId === ADMIN_ID && (a.title || "").toLowerCase().includes("standings");
       });

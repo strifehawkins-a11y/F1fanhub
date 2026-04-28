@@ -7,6 +7,7 @@ import { syncStandingsFromAPI } from "./syncStandings";
 import { syncRacesFromAPI } from "./syncRaces";
 import { postBatchToReddit } from "./redditPost";
 import { postBatchToCommunities } from "./communityPost";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
