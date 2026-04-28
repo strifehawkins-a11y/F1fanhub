@@ -3,27 +3,43 @@ import { storage } from "./storage";
 const ADMIN_ID = "seed-admin";
 const MAX_PER_DAY = 10;
 
-// Verified F1 imagery — all IDs confirmed 200 OK on Unsplash
-// Only use IDs that have been explicitly verified to exist and show motorsport/F1 content
+// Verified F1 imagery from Pexels — all IDs confirmed 200 OK with descriptive filenames
+// proving F1/motorsport content. Source: Pexels "formula 1 racing" search results.
 const F1_IMAGES = [
-  // F1 cars on track / aerodynamics
-  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=1200&q=80",
-  // Pit stop / mechanics
-  "https://images.unsplash.com/photo-1607603750909-408e193868c7?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1621135802920-133df287f89c?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=80",
-  // Driver / cockpit
-  "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?auto=format&fit=crop&w=1200&q=80",
-  // Circuit / aerial
-  "https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=1200&q=80",
-  // Data / tech screens
-  "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
-  // Podium / celebration
-  "https://images.unsplash.com/photo-1524514587686-e2909d726e9b?auto=format&fit=crop&w=1200&q=80",
-  // Grand prix crowd / grandstands
-  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80",
+  // Formula 1 cars on track — on-board, high speed, asphalt
+  "https://images.pexels.com/photos/28680794/pexels-photo-28680794.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/28680795/pexels-photo-28680795.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29252117/pexels-photo-29252117.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29309759/pexels-photo-29309759.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/31204631/pexels-photo-31204631.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/31331378/pexels-photo-31331378.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Street circuits — Baku, Monaco-style
+  "https://images.pexels.com/photos/28832062/pexels-photo-28832062.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Finish line / crossing
+  "https://images.pexels.com/photos/29252129/pexels-photo-29252129.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Wet weather racing
+  "https://images.pexels.com/photos/29276540/pexels-photo-29276540.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29283583/pexels-photo-29283583.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29283585/pexels-photo-29283585.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29382709/pexels-photo-29382709.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Pit stops
+  "https://images.pexels.com/photos/29327954/pexels-photo-29327954.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/29327961/pexels-photo-29327961.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Interlagos / São Paulo Grand Prix
+  "https://images.pexels.com/photos/34722736/pexels-photo-34722736.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34722749/pexels-photo-34722749.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34722763/pexels-photo-34722763.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34722772/pexels-photo-34722772.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34835634/pexels-photo-34835634.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34835674/pexels-photo-34835674.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/34926318/pexels-photo-34926318.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/35210802/pexels-photo-35210802.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Night race (Las Vegas / Singapore style)
+  "https://images.pexels.com/photos/35219022/pexels-photo-35219022.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // Mexico City Grand Prix
+  "https://images.pexels.com/photos/33968212/pexels-photo-33968212.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  // AlphaTauri / VCARB on circuit
+  "https://images.pexels.com/photos/17424277/pexels-photo-17424277.jpeg?auto=compress&cs=tinysrgb&w=1200",
 ];
 
 // Pick a random verified F1 image — rotates through the pool for variety
