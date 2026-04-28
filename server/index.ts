@@ -126,7 +126,7 @@ app.use((req, res, next) => {
     log(`Auto-publish scheduled in ${Math.round(msUntil / 60000)} minutes (${next.toISOString()})`, "scheduler");
     setTimeout(async () => {
       try {
-        const result = await generateAndPublishBatch(5);
+        const result = await generateAndPublishBatch(10);
         if (result.submitted.length > 0) {
           log(`Auto-published batch: ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
           if (result.publishedArticles.length > 0) {
@@ -159,7 +159,7 @@ app.use((req, res, next) => {
         });
         if (publishedToday.length === 0) {
           log("Startup catch-up: missed today's 07:00 UTC window — running auto-publish now", "scheduler");
-          const result = await generateAndPublishBatch(5);
+          const result = await generateAndPublishBatch(10);
           if (result.submitted.length > 0) {
             log(`Catch-up published: ${result.submitted.map((t: string) => `"${t}"`).join(", ")}`, "scheduler");
             if (result.publishedArticles.length > 0) {

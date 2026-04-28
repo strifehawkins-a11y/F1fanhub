@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 
 const ADMIN_ID = "seed-admin";
-const MAX_PER_DAY = 5;
+const MAX_PER_DAY = 10;
 
 const IMGS = {
   aero: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80",

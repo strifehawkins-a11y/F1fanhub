@@ -874,12 +874,12 @@ export default function Dashboard() {
   // Slider shows paddock articles first, then fills with the newest news articles
   // so auto-published articles always appear even if no paddock articles are set
   const sliderArticles = (() => {
-    const paddock = paddockArticles.slice(0, 5);
-    if (paddock.length >= 5) return paddock;
+    const paddock = paddockArticles.slice(0, 10);
+    if (paddock.length >= 10) return paddock;
     const usedIds = new Set(paddock.map((a: any) => a.id));
     const recentNews = regularArticles
       .filter((a: any) => !usedIds.has(a.id))
-      .slice(0, 8 - paddock.length);
+      .slice(0, 10 - paddock.length);
     return [...paddock, ...recentNews];
   })();
 
