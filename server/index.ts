@@ -146,6 +146,38 @@ app.use((req, res, next) => {
   }
   scheduleNextAutoPublish();
 
+  // Catch-up: if the server starts after 07:00 UTC and no articles were published today, run immediately
+  (async () => {
+    try {
+      const now = new Date();
+      if (now.getUTCHours() >= 7) {
+        const todayStr = now.toISOString().split("T")[0];
+        const allArticles = await storage.getArticles();
+        const publishedToday = allArticles.filter((a: any) => {
+          const d = a.publishedAt || a.createdAt;
+          return d && new Date(d).toISOString().split("T")[0] === todayStr && a.authorId === "seed-admin";
+        });
+        if (publishedToday.length === 0) {
+          log("Startup catch-up: missed today's 07:00 UTC window — running auto-publish now", "scheduler");
+          const result = await generateAndPublishBatch(5);
+          if (result.submitted.length > 0) {
+            log(`Catch-up published: ${result.submitted.map((t: string) => `"${t}"`).join(", ")}`, "scheduler");
+            if (result.publishedArticles.length > 0) {
+              await postBatchToReddit(result.publishedArticles, log);
+              await postBatchToCommunities(result.publishedArticles, log);
+            }
+          } else {
+            log(`Catch-up skipped: ${result.message}`, "scheduler");
+          }
+        } else {
+          log(`Startup catch-up: ${publishedToday.length} article(s) already published today — no catch-up needed`, "scheduler");
+        }
+      }
+    } catch (err: any) {
+      log(`Startup catch-up error: ${err?.message}`, "scheduler");
+    }
+  })();
+
   // Weekly trending auto-publish — fires every Monday at 07:00 UTC
   function scheduleNextWeeklyTrendingPublish() {
     const now = new Date();
