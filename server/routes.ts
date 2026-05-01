@@ -121,22 +121,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.type("application/xml").send(xml);
   });
 
-  // ---- RSS FEED ----
+  // ---- RSS FEED — public, no auth required ----
   app.get("/rss.xml", async (_req, res) => {
     const siteUrl = "https://www.f1fanhub.net";
     const escape = (s: string) =>
       (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
+    // Allow any RSS reader / aggregator / bot to access this without auth
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET, HEAD");
+    res.set("X-Robots-Tag", "noarchive");
+
     let items = "";
     try {
       const articles = await storage.getArticles();
-      for (const a of articles) {
+      // Sort newest first
+      const sorted = [...articles].sort((a, b) =>
+        new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime()
+      );
+      for (const a of sorted) {
         const slug = (a as any).slug || a.id;
         const link = `${siteUrl}/articles/${slug}`;
         const pubDate = a.publishedAt ? new Date(a.publishedAt).toUTCString() : new Date().toUTCString();
         const tags = Array.isArray((a as any).tags) ? (a as any).tags : [];
         const categories = tags.map((t: string) => `        <category>${escape(t)}</category>`).join("\n");
-        const image = a.imageUrl ? `        <enclosure url="${siteUrl}${a.imageUrl}" type="image/jpeg" length="0" />\n` : "";
+        // Image URL may already be absolute (Pexels) or relative — handle both
+        const imgUrl = a.imageUrl
+          ? (a.imageUrl.startsWith("http") ? a.imageUrl : `${siteUrl}${a.imageUrl}`)
+          : null;
+        const image = imgUrl ? `        <enclosure url="${escape(imgUrl)}" type="image/jpeg" length="0" />\n` : "";
         items += `    <item>
       <title>${escape(a.title)}</title>
       <link>${link}</link>
