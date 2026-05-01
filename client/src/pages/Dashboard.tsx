@@ -871,8 +871,7 @@ export default function Dashboard() {
     ...normalizedForum.sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()),
   ];
 
-  // Slider shows paddock articles first, then fills with the newest news articles
-  // so auto-published articles always appear even if no paddock articles are set
+  // Paddock slider: paddock articles first, fills with recent news if fewer than 10
   const sliderArticles = (() => {
     const paddock = paddockArticles.slice(0, 10);
     if (paddock.length >= 10) return paddock;
@@ -883,8 +882,17 @@ export default function Dashboard() {
     return [...paddock, ...recentNews];
   })();
 
-  const heroArticle = sliderArticles[0] || null;
-  const gridArticles = newsArticles;
+  // News slider: latest 5 non-paddock articles sorted purely by publish date
+  const newsSliderArticles = (articles || [])
+    .filter((a: any) => a.section !== "paddock")
+    .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    .slice(0, 5);
+
+  const newsSliderIds = new Set(newsSliderArticles.map((a: any) => a.id));
+
+  // List below the news slider: remaining articles (not already in slider)
+  const newsListArticles = newsArticles.filter((a: any) => !newsSliderIds.has(a.id));
+
 
   return (
     <div className="space-y-0">
@@ -959,28 +967,28 @@ export default function Dashboard() {
 
             {articlesLoading ? (
               <div className="space-y-4">
+                <Skeleton className="h-[280px] w-full rounded-2xl" />
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
               </div>
-            ) : gridArticles.length > 0 ? (
-              <div>
-                {/* Top 2 articles — featured card layout */}
-                {gridArticles.length >= 2 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    {gridArticles.slice(0, 2).map(article => (
-                      <ArticleCard key={article.id} article={article} featured />
+            ) : (
+              <div className="space-y-4">
+                {/* News slider — latest articles first */}
+                {newsSliderArticles.length > 0 && (
+                  <DashboardSlider articles={newsSliderArticles} />
+                )}
+
+                {/* Remaining articles — compact list layout */}
+                {newsListArticles.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {newsListArticles.map(article => (
+                      <ArticleCard key={article.id} article={article} />
                     ))}
                   </div>
-                )}
-                {/* Remaining articles — compact list layout */}
-                <div className="divide-y divide-gray-100">
-                  {gridArticles.slice(gridArticles.length >= 2 ? 2 : 0).map(article => (
-                    <ArticleCard key={article.id} article={article} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-gray-100 bg-white p-8 text-center">
-                <p className="font-racing text-xs text-gray-500 tracking-widest uppercase">No articles yet</p>
+                ) : newsSliderArticles.length === 0 ? (
+                  <div className="rounded-xl border border-gray-100 bg-white p-8 text-center">
+                    <p className="font-racing text-xs text-gray-500 tracking-widest uppercase">No articles yet</p>
+                  </div>
+                ) : null}
               </div>
             )}
 
