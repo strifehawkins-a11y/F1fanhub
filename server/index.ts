@@ -7,7 +7,7 @@ import { syncStandingsFromAPI } from "./syncStandings";
 import { syncRacesFromAPI } from "./syncRaces";
 import { postBatchToReddit } from "./redditPost";
 import { postBatchToCommunities } from "./communityPost";
-import { postBatchToFacebook } from "./facebookPost";
+import { postBatchToFacebook, initFacebookTokenRefresh } from "./facebookPost";
 import { storage } from "./storage";
 
 const app = express();
@@ -116,6 +116,9 @@ app.use((req, res, next) => {
   };
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
+
+  // Facebook token — auto-refresh on startup and every 30 days
+  initFacebookTokenRefresh(log);
 
   // Daily auto-publish scheduler — fires at 07:00 UTC every day
   function scheduleNextAutoPublish() {
