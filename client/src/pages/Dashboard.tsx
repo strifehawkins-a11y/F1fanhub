@@ -1130,10 +1130,6 @@ export default function Dashboard() {
             {races && <NextRaceWidget races={races} profile={profile} />}
             <PollsWidget />
             <AdBanner variant="square" />
-            <MiniStandings
-              drivers={driverStandings || []}
-              constructors={constructorStandings || []}
-            />
             <MostReadWidget />
             <OnThisDayWidget />
           </div>
@@ -1157,6 +1153,13 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Championship Standings — full-width below Gina section */}
+      <div className="mt-10 pt-6 border-t border-gray-100">
+        <MiniStandings
+          drivers={driverStandings || []}
+          constructors={constructorStandings || []}
+        />
+      </div>
     </div>
   );
 }
