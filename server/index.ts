@@ -7,6 +7,7 @@ import { syncStandingsFromAPI } from "./syncStandings";
 import { syncRacesFromAPI } from "./syncRaces";
 import { postBatchToReddit } from "./redditPost";
 import { postBatchToCommunities } from "./communityPost";
+import { postBatchToFacebook } from "./facebookPost";
 import { storage } from "./storage";
 
 const app = express();
@@ -133,6 +134,7 @@ app.use((req, res, next) => {
           if (result.publishedArticles.length > 0) {
             await postBatchToReddit(result.publishedArticles, log);
             await postBatchToCommunities(result.publishedArticles, log);
+            await postBatchToFacebook(result.publishedArticles, log);
           }
         } else if (result.noContent) {
           log(`Auto-publish: no fresh content available. ${result.message}`, "scheduler");
@@ -166,6 +168,7 @@ app.use((req, res, next) => {
             if (result.publishedArticles.length > 0) {
               await postBatchToReddit(result.publishedArticles, log);
               await postBatchToCommunities(result.publishedArticles, log);
+              await postBatchToFacebook(result.publishedArticles, log);
             }
           } else {
             log(`Catch-up skipped: ${result.message}`, "scheduler");
@@ -200,6 +203,7 @@ app.use((req, res, next) => {
           log(`Weekly trending: published ${result.submitted.map(t => `"${t}"`).join(", ")}`, "scheduler");
           if (result.publishedArticles.length > 0) {
             await postBatchToCommunities(result.publishedArticles, log);
+            await postBatchToFacebook(result.publishedArticles, log);
           }
         } else {
           log(`Weekly trending skipped: ${result.message}`, "scheduler");
