@@ -82,29 +82,61 @@ export async function postArticleToFacebook(article: {
   }
 
   const articleUrl = `${SITE_URL}/articles/${article.slug}`;
-  const message = article.excerpt
-    ? `${article.title}\n\n${article.excerpt}\n\nRead more: ${articleUrl}`
-    : `${article.title}\n\nRead more: ${articleUrl}`;
+  const caption = article.excerpt
+    ? `${article.title}\n\n${article.excerpt}\n\n🔗 Read more: ${articleUrl}`
+    : `${article.title}\n\n🔗 Read more: ${articleUrl}`;
 
   try {
-    const body = new URLSearchParams({
-      message,
-      link: articleUrl,
-      access_token: token,
-    });
+    let endpoint: string;
+    let body: URLSearchParams;
 
-    // Use /me/feed — with a Page token "me" is always the page itself,
-    // so this works regardless of what FACEBOOK_PAGE_ID is set to.
-    const res = await fetch(`${GRAPH}/me/feed`, {
+    if (article.imageUrl) {
+      // Photo post — image appears large and prominent in the feed
+      endpoint = `${GRAPH}/me/photos`;
+      body = new URLSearchParams({
+        url: article.imageUrl,
+        caption,
+        access_token: token,
+      });
+    } else {
+      // Fallback: link post (Facebook will scrape OG image from article URL)
+      endpoint = `${GRAPH}/me/feed`;
+      body = new URLSearchParams({
+        message: caption,
+        link: articleUrl,
+        access_token: token,
+      });
+    }
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     });
 
     const data = await res.json() as any;
 
     if (!res.ok || data.error) {
+      // If photo post fails, retry as a plain link post
+      if (article.imageUrl) {
+        const fallback = new URLSearchParams({
+          message: caption,
+          link: articleUrl,
+          access_token: token,
+        });
+        const fallbackRes = await fetch(`${GRAPH}/me/feed`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: fallback.toString(),
+          signal: AbortSignal.timeout(12000),
+        });
+        const fallbackData = await fallbackRes.json() as any;
+        if (!fallbackRes.ok || fallbackData.error) {
+          return { success: false, message: fallbackData?.error?.message || `HTTP ${fallbackRes.status}` };
+        }
+        return { success: true, postId: fallbackData.id };
+      }
       return { success: false, message: data?.error?.message || `HTTP ${res.status}` };
     }
 
