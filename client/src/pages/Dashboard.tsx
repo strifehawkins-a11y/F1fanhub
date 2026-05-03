@@ -1004,10 +1004,15 @@ export default function Dashboard() {
 
   const newsSliderIds = new Set(newsSliderArticles.map((a: any) => a.id));
 
-  // List below the news slider: remaining articles sorted newest first
-  const newsListArticles = newsArticles
-    .filter((a: any) => !newsSliderIds.has(a.id))
-    .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  // Older paddock articles pushed out of the main slider (previous days' auto-published news)
+  const sliderArticleIds = new Set(sliderArticles.map((a: any) => a.id));
+  const olderPaddockArticles = paddockArticles.filter((a: any) => !sliderArticleIds.has(a.id));
+
+  // List below the news slider: remaining articles + previous days' paddock articles, sorted newest first
+  const newsListArticles = [
+    ...newsArticles.filter((a: any) => !newsSliderIds.has(a.id)),
+    ...olderPaddockArticles,
+  ].sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 
   return (
