@@ -712,6 +712,24 @@ ${items}  </channel>
     }
   });
 
+  app.post("/api/admin/test-facebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const admin = await storage.isAdmin(userId);
+      if (!admin) return res.status(403).json({ message: "Admin access required" });
+      const { postArticleToFacebook } = await import("./facebookPost");
+      const result = await postArticleToFacebook({
+        title: "F1 Fan Hub is live on Facebook!",
+        slug: "",
+        excerpt: "Your home for Formula 1 news, standings, race reports, polls and more. Follow us for daily F1 updates.",
+        imageUrl: undefined,
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Test post failed" });
+    }
+  });
+
   app.get("/api/articles/:id/comments", async (req, res) => {
     try {
       const comments = await storage.getArticleComments(Number(req.params.id));
