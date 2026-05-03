@@ -69,6 +69,71 @@ function getToken(): string | null {
   return g._fbToken !== undefined ? g._fbToken : (process.env.FACEBOOK_PAGE_ACCESS_TOKEN || null);
 }
 
+const HOOKS = [
+  "🏎️ LATEST FROM THE PADDOCK",
+  "🏁 F1 FAN HUB | MUST READ",
+  "⚡ STRAIGHT FROM THE PITLANE",
+  "🔍 DEEP DIVE",
+  "📢 F1 NEWS",
+  "🏆 FORMULA 1 UPDATE",
+  "🔧 INSIDE F1",
+  "📡 LIVE FROM THE GRID",
+];
+
+let _hookIdx = 0;
+function pickHook(): string {
+  return HOOKS[_hookIdx++ % HOOKS.length];
+}
+
+function engagementQuestion(title: string, excerpt: string): string {
+  const text = `${title} ${excerpt}`.toLowerCase();
+  if (/champion|title|standings|points|lead/.test(text))
+    return "Who do you think takes the championship this year? Drop your prediction below 👇";
+  if (/verstappen|hamilton|leclerc|norris|piastri|russell|sainz|alonso|perez/.test(text))
+    return "Is this the move that changes everything? Tell us what you think 👇";
+  if (/strategy|pit stop|tyre|tire|compound|undercut|overcut/.test(text))
+    return "Right call or a missed opportunity? Let us know 👇";
+  if (/engine|aero|upgrade|technical|power unit|floor|wing/.test(text))
+    return "Do you think this gives them the edge on track? 👇";
+  if (/race|grand prix|gp|win|podium|victory|result/.test(text))
+    return "Were you watching? What was your standout moment? Comment below 👇";
+  if (/qualifying|pole|grid|q1|q2|q3/.test(text))
+    return "Can they convert pole into a race win? Share your thoughts 👇";
+  if (/safety car|crash|incident|penalty|steward/.test(text))
+    return "The right decision by the stewards? Have your say 👇";
+  if (/contract|transfer|move|sign|team/.test(text))
+    return "Smart move or a gamble? Let us know what you think 👇";
+  return "What's your take on this? Comment below — we read every reply 👇";
+}
+
+const F1_HASHTAGS = "#F1 #Formula1 #FormulaOne #F1News #GrandPrix";
+
+function buildCaption(article: { title: string; slug: string; excerpt?: string }, articleUrl: string): string {
+  const hook = pickHook();
+  const excerpt = article.excerpt || "";
+  const question = engagementQuestion(article.title, excerpt);
+
+  const lines: string[] = [
+    `${hook}`,
+    ``,
+    `${article.title}`,
+    ``,
+  ];
+
+  if (excerpt) {
+    lines.push(excerpt);
+    lines.push(``);
+  }
+
+  lines.push(question);
+  lines.push(``);
+  lines.push(`👉 Read the full story: ${articleUrl}`);
+  lines.push(``);
+  lines.push(F1_HASHTAGS);
+
+  return lines.join("\n");
+}
+
 export async function postArticleToFacebook(article: {
   title: string;
   slug: string;
@@ -82,9 +147,7 @@ export async function postArticleToFacebook(article: {
   }
 
   const articleUrl = `${SITE_URL}/articles/${article.slug}`;
-  const caption = article.excerpt
-    ? `${article.title}\n\n${article.excerpt}\n\n🔗 Read more: ${articleUrl}`
-    : `${article.title}\n\n🔗 Read more: ${articleUrl}`;
+  const caption = buildCaption(article, articleUrl);
 
   try {
     let endpoint: string;
