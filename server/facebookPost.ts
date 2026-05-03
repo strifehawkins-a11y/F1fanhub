@@ -75,10 +75,9 @@ export async function postArticleToFacebook(article: {
   excerpt?: string;
   imageUrl?: string;
 }): Promise<{ success: boolean; postId?: string; message?: string }> {
-  const pageId = process.env.FACEBOOK_PAGE_ID;
   const token = getToken();
 
-  if (!pageId || !token) {
+  if (!token) {
     return { success: false, message: "Facebook credentials not configured" };
   }
 
@@ -94,7 +93,9 @@ export async function postArticleToFacebook(article: {
       access_token: token,
     });
 
-    const res = await fetch(`${GRAPH}/${pageId}/feed`, {
+    // Use /me/feed — with a Page token "me" is always the page itself,
+    // so this works regardless of what FACEBOOK_PAGE_ID is set to.
+    const res = await fetch(`${GRAPH}/me/feed`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
