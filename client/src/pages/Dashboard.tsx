@@ -890,8 +890,10 @@ export default function Dashboard() {
 
   const newsSliderIds = new Set(newsSliderArticles.map((a: any) => a.id));
 
-  // List below the news slider: remaining articles (not already in slider)
-  const newsListArticles = newsArticles.filter((a: any) => !newsSliderIds.has(a.id));
+  // List below the news slider: remaining articles sorted newest first
+  const newsListArticles = newsArticles
+    .filter((a: any) => !newsSliderIds.has(a.id))
+    .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 
   return (
