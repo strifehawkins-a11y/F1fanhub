@@ -172,6 +172,48 @@ async function postToInstagram(article: { title: string; slug: string; excerpt?:
   }
 }
 
+async function postToFacebook(article: { title: string; slug: string; excerpt?: string; imageUrl?: string }): Promise<PostResult> {
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+  const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!pageId || !pageToken) return { platform: "facebook", success: false, message: "FACEBOOK_PAGE_ID or FACEBOOK_PAGE_ACCESS_TOKEN not set" };
+
+  const articleUrl = `${SITE_URL}/articles/${article.slug}`;
+  const message = `${article.title}\n\n${(article.excerpt || "").slice(0, 400)}${article.excerpt && article.excerpt.length > 400 ? "..." : ""}\n\nRead more: ${articleUrl}\n\n#F1 #Formula1 #F1FanHub #FormulaOne`;
+
+  try {
+    // If there's an image, post as a photo with link; otherwise post as a plain feed link
+    let res: Response;
+    if (article.imageUrl) {
+      res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: article.imageUrl,
+          caption: message,
+          access_token: pageToken,
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+    } else {
+      res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          link: articleUrl,
+          access_token: pageToken,
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+    }
+    const data = await res.json() as any;
+    if (data.id) return { platform: "facebook", success: true };
+    return { platform: "facebook", success: false, message: data.error?.message || `HTTP ${res.status}` };
+  } catch (err: any) {
+    return { platform: "facebook", success: false, message: err?.message };
+  }
+}
+
 async function postToPinterest(article: { title: string; slug: string; excerpt?: string; imageUrl?: string }): Promise<PostResult> {
   const accessToken = process.env.PINTEREST_ACCESS_TOKEN;
   const boardId = process.env.PINTEREST_BOARD_ID;
@@ -228,6 +270,7 @@ export async function postArticleToCommunities(
   if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) jobs.push(postToTelegram(article));
   if (process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD) jobs.push(postToBluesky(article));
   if (process.env.INSTAGRAM_ACCOUNT_ID && process.env.INSTAGRAM_ACCESS_TOKEN) jobs.push(postToInstagram(article));
+  if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) jobs.push(postToFacebook(article));
   if (process.env.PINTEREST_ACCESS_TOKEN && process.env.PINTEREST_BOARD_ID) jobs.push(postToPinterest(article));
 
   if (jobs.length === 0) {
