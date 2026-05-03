@@ -8,6 +8,7 @@ import { syncRacesFromAPI } from "./syncRaces";
 import { postBatchToReddit } from "./redditPost";
 import { postBatchToCommunities } from "./communityPost";
 import { postBatchToFacebook, initFacebookTokenRefresh } from "./facebookPost";
+import { scheduleDailyReels } from "./videoReel";
 import { storage } from "./storage";
 
 const app = express();
@@ -119,6 +120,9 @@ app.use((req, res, next) => {
 
   // Facebook token — auto-refresh on startup and every 30 days
   initFacebookTokenRefresh(log);
+
+  // Daily video reels — 3 per day at 08:00, 13:00, 19:00 UTC
+  scheduleDailyReels(() => storage.getArticles(), log);
 
   // Daily auto-publish scheduler — fires at 07:00 UTC every day
   function scheduleNextAutoPublish() {
