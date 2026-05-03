@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3, PenLine, Briefcase } from "lucide-react";
+import { Home, Brain, MessageSquare, Trophy, Heart, BookOpen, BarChart2, Shield, Menu, X, Zap, LogIn, UserPlus, LogOut, BarChart3, PenLine, Briefcase, Search, Mail, CheckCircle, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile } from "@shared/schema";
@@ -8,16 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function ViewerCounter() {
   const [count, setCount] = useState<number | null>(null);
-
   useEffect(() => {
     const es = new EventSource("/api/viewers");
     es.onmessage = (e) => setCount(Number(e.data));
     es.onerror = () => es.close();
     return () => es.close();
   }, []);
-
   if (count === null) return null;
-
   return (
     <div className="flex items-center gap-1.5" data-testid="viewer-counter">
       <span className="relative flex h-2 w-2">
@@ -31,6 +28,203 @@ function ViewerCounter() {
   );
 }
 
+function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<any>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  const handleInput = (val: string) => {
+    setQuery(val);
+    clearTimeout(debounceRef.current);
+    if (val.length < 2) { setResults([]); setLoading(false); return; }
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        setResults(data.articles || []);
+      } finally {
+        setLoading(false);
+      }
+    }, 280);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col items-center pt-16 px-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white shadow-2xl rounded-2xl overflow-hidden w-full max-w-2xl">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+          <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => handleInput(e.target.value)}
+            placeholder="Search articles, race reports, analysis..."
+            data-testid="input-search"
+            className="flex-1 font-racing text-sm bg-transparent border-none outline-none placeholder:text-gray-400 text-gray-900"
+          />
+          {loading && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />}
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {results.length > 0 ? (
+          <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+            {results.map((a: any) => (
+              <Link key={a.id} href={`/articles/${a.slug || a.id}`}>
+                <div
+                  onClick={onClose}
+                  data-testid={`search-result-${a.id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  {a.imageUrl && (
+                    <img
+                      src={a.imageUrl} alt=""
+                      className="w-12 h-10 object-cover rounded-md flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-racing text-sm font-bold text-gray-900 line-clamp-1">{a.title}</p>
+                    <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{a.excerpt}</p>
+                  </div>
+                  {a.section && (
+                    <span className="font-racing text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full tracking-wide uppercase flex-shrink-0">
+                      {a.section}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : query.length >= 2 && !loading ? (
+          <div className="px-4 py-10 text-center">
+            <p className="font-racing text-sm text-gray-500">No results for "<span className="text-gray-900">{query}</span>"</p>
+            <p className="font-racing text-xs text-gray-400 mt-1 tracking-wide">Try different keywords</p>
+          </div>
+        ) : query.length === 0 ? (
+          <div className="px-4 py-8 text-center text-xs text-gray-400 font-racing tracking-widest uppercase">
+            Start typing to search F1 Paddock
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function BreakingTicker() {
+  const { data: articles } = useQuery<any[]>({ queryKey: ["/api/articles"] });
+  const items = (articles || []).slice(0, 10);
+  if (items.length === 0) return null;
+  const text = items.map((a: any) => a.title).join("   ·   ");
+
+  return (
+    <div className="bg-primary h-[26px] flex items-center overflow-hidden">
+      <style>{`
+        @keyframes f1-ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+      <div className="flex-shrink-0 font-racing text-[9px] font-black tracking-[0.2em] uppercase bg-black/20 text-white px-3 h-full flex items-center mr-0 whitespace-nowrap border-r border-white/20 z-10">
+        LATEST
+      </div>
+      <div className="flex-1 overflow-hidden relative">
+        <div
+          className="whitespace-nowrap text-white font-racing text-[11px] tracking-wide inline-block"
+          style={{ animation: "f1-ticker 55s linear infinite" }}
+        >
+          &nbsp;&nbsp;{text}&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;{text}&nbsp;&nbsp;
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewsletterFooter() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [msg, setMsg] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !email.includes("@")) return;
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      setMsg(data.message || "");
+      setStatus(data.success ? "success" : "error");
+    } catch {
+      setStatus("error");
+      setMsg("Something went wrong. Please try again.");
+    }
+  };
+
+  return (
+    <div className="border-t border-gray-100 bg-gray-50/60 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Mail className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-racing text-sm font-black text-gray-900 tracking-wide">Weekly Paddock Newsletter</p>
+              <p className="font-racing text-[10px] text-gray-500 tracking-wide">Race previews, standings & exclusive F1 analysis</p>
+            </div>
+          </div>
+
+          {status === "success" ? (
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="w-4 h-4" />
+              <span className="font-racing text-xs font-bold">{msg || "You're subscribed!"}</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                data-testid="input-newsletter-email"
+                className="font-racing text-xs bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-primary/40 transition-colors w-52 placeholder:text-gray-400"
+              />
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                data-testid="button-newsletter-subscribe"
+                className="font-racing text-[10px] font-black tracking-wide bg-primary text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60 whitespace-nowrap"
+              >
+                {status === "loading" ? "..." : "Subscribe"}
+              </button>
+            </form>
+          )}
+          {status === "error" && (
+            <p className="font-racing text-[10px] text-red-500">{msg}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
@@ -39,6 +233,7 @@ const navItems = [
   { path: "/", label: "News", icon: Home },
   { path: "/standings", label: "Standings", icon: BarChart2 },
   { path: "/articles", label: "Articles", icon: BookOpen },
+  { path: "/calendar", label: "Calendar", icon: Calendar },
   { path: "/forum", label: "Forum", icon: MessageSquare },
   { path: "/polls", label: "Polls", icon: BarChart3 },
   { path: "/quiz", label: "Quiz", icon: Brain },
@@ -52,6 +247,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/profile"],
@@ -60,7 +256,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const displayName = (user as any)?.firstName || (user as any)?.displayName || "Pilot";
   const initials = displayName.charAt(0).toUpperCase();
-
   const isActive = (path: string) => path === "/" ? location === "/" : location.startsWith(path);
 
   const handleLogout = async () => {
@@ -70,8 +265,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.location.href = "/";
   };
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+
       {/* Header */}
       <header className="sticky top-0 z-[9999] bg-white border-b border-gray-100 shadow-sm">
         {/* F1 red top stripe */}
@@ -88,16 +296,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
             </Link>
 
-            {/* Divider */}
             <div className="hidden md:block h-5 w-px bg-gray-200 mx-1" />
 
             {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-0.5 flex-1">
+            <nav className="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto">
               {navItems.map(({ path, label }) => (
                 <Link key={path} href={path}>
                   <button
                     data-testid={`nav-${label.toLowerCase()}`}
-                    className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
+                    className={`px-2.5 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all whitespace-nowrap ${
                       isActive(path)
                         ? "text-primary bg-primary/8 border border-primary/15"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -109,7 +316,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               ))}
               {profile?.isAdmin && (
                 <Link href="/admin">
-                  <button className={`px-3 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
+                  <button className={`px-2.5 py-1.5 rounded-md font-racing text-xs font-bold tracking-wide transition-all ${
                     isActive("/admin")
                       ? "text-primary bg-primary/8 border border-primary/15"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -122,6 +329,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {/* Right section */}
             <div className="flex items-center gap-2 ml-auto">
+              {/* Search button */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                data-testid="button-search"
+                title="Search (⌘K)"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:border-primary/30 hover:text-primary transition-all"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span className="hidden lg:block font-racing text-[10px] tracking-wide text-gray-400">⌘K</span>
+              </button>
+
               {user ? (
                 <>
                   {profile && (
@@ -133,7 +351,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       <span className="font-racing text-[9px] text-gray-400 tracking-widest">PTS</span>
                     </div>
                   )}
-                  {/* Submit Story button */}
                   <Link href="/submit-story">
                     <button
                       data-testid="button-submit-story"
@@ -143,20 +360,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       Submit Story
                     </button>
                   </Link>
-                  {/* Avatar */}
                   <Link href="/leaderboard">
-                    <Avatar
-                      className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all"
-                      data-testid="link-profile"
-                    >
+                    <Avatar className="w-8 h-8 cursor-pointer ring-2 ring-gray-100 hover:ring-primary/40 transition-all" data-testid="link-profile">
                       <AvatarImage src={(user as any)?.profileImageUrl || ""} />
                       <AvatarFallback className="bg-primary text-white text-xs font-racing font-bold">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                   </Link>
-
-                  {/* Sign Out button — desktop */}
                   <button
                     data-testid="button-logout"
                     onClick={handleLogout}
@@ -224,9 +435,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide transition-all ${
-                      isActive("/admin")
-                        ? "text-primary bg-primary/8"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      isActive("/admin") ? "text-primary bg-primary/8" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Shield className="w-4 h-4" />
@@ -234,6 +443,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </button>
                 </Link>
               )}
+              <button
+                onClick={() => { setMobileMenuOpen(false); setSearchOpen(true); }}
+                className="w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg font-racing text-[10px] font-bold tracking-wide text-gray-600 hover:bg-gray-50 transition-all"
+              >
+                <Search className="w-4 h-4" />
+                Search
+              </button>
               {user ? (
                 <>
                   <Link href="/submit-story">
@@ -269,19 +485,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
           </div>
         )}
-      </header>
 
+        {/* Breaking news ticker */}
+        <BreakingTicker />
+      </header>
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      {/* Newsletter + Footer */}
+      <NewsletterFooter />
+
+      <footer className="border-t border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Brand */}
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                 <span className="font-racing text-white text-[9px] font-black tracking-tighter">F1</span>
@@ -293,33 +512,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             <ViewerCounter />
 
-            {/* Links */}
             <nav className="flex items-center gap-4 flex-wrap">
-              <Link href="/about">
-                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
-                  About
+              {[
+                { href: "/about", label: "About" },
+                { href: "/contact", label: "Contact" },
+                { href: "/privacy", label: "Privacy Policy" },
+                { href: "/terms", label: "Terms of Service" },
+                { href: "/rss.xml", label: "RSS Feed", external: true },
+              ].map(({ href, label, external }, i, arr) => (
+                <span key={href} className="flex items-center gap-4">
+                  {external ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">{label}</span>
+                    </a>
+                  ) : (
+                    <Link href={href}>
+                      <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">{label}</span>
+                    </Link>
+                  )}
+                  {i < arr.length - 1 && <span className="text-gray-200 text-xs">·</span>}
                 </span>
-              </Link>
-              <span className="text-gray-200 text-xs">·</span>
-              <Link href="/contact">
-                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
-                  Contact
-                </span>
-              </Link>
-              <span className="text-gray-200 text-xs">·</span>
-              <Link href="/privacy">
-                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
-                  Privacy Policy
-                </span>
-              </Link>
-              <span className="text-gray-200 text-xs">·</span>
-              <Link href="/terms">
-                <span className="font-racing text-[10px] text-gray-400 hover:text-primary transition-colors tracking-wide uppercase cursor-pointer">
-                  Terms of Service
-                </span>
-              </Link>
-              <span className="text-gray-200 text-xs">·</span>
-              <span className="font-racing text-[10px] text-gray-400 tracking-wide uppercase">2026 F1 Season</span>
+              ))}
             </nav>
           </div>
         </div>

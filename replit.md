@@ -1,20 +1,27 @@
-# F1 Paddock — Formula 1 Stats & Social App
+# F1 Paddock — F1 Fan Hub (www.f1fanhub.net)
 
 ## Overview
-A mobile-first Formula 1 statistics and social app with a cartoony "Hades"-inspired aesthetic, F1 red color scheme.
+A comprehensive Formula 1 fan website with news, standings, forum, polls, quiz, visual novel, auth, daily auto-publish, AdSense, and full Node.js SSR for Google indexing. White/red McLaren-inspired design, Oxanium font.
 
 ## Features
-- **Dashboard** — Race countdown, points display, daily reward, quick actions
-- **F1 Quiz** — 20 questions about F1 history and 2025 season. Earn points for correct answers
-- **Race Forum** — Dedicated discussion threads for all 23 2025 F1 Grand Prix races
-- **Articles** — Admin-publishable articles with comments, readable by all users
-- **Leaderboard** — Top pilots ranked by lifetime points (quiz scores + daily rewards)
-- **Aria's Visual Novel** — Dating sim story about rookie F1 driver Aria Voss. 5 chapters, spend points to unlock better choices, dress her up with outfit items
-- **Admin Panel** — Admins can create/edit/delete articles, trigger auto-publish. Access at /admin
-- **Auto-Publish** — Daily scheduler fires at 07:00 UTC generating race previews, standings digests, or evergreen F1 articles based on live DB data. Also triggerable manually from admin panel
-- **Daily Points** — Claim 5,000 points every 24 hours
+- **Dashboard** — Race countdown, points display, daily reward, Most Read widget, "On This Day in F1" historical fact widget
+- **Search** — Full-text article search overlay (⌘K shortcut), live debounced results from `/api/search`
+- **Breaking News Ticker** — Scrolling latest article headlines below the header (red bar)
+- **Race Calendar** — `/calendar` page showing 2026 F1 season with season progress bar, upcoming/completed races, sprint badges, country flags
+- **Newsletter** — Footer email subscription form, stored in `newsletter_subscribers` DB table
+- **F1 Quiz** — 10 questions about F1 history. Earn points for correct answers
+- **Race Forum** — Dedicated discussion threads per Grand Prix race
+- **Articles** — Admin-publishable articles with comments, reading progress bar, view tracking
+- **Leaderboard** — Top pilots ranked by lifetime points
+- **Gina's Visual Novel** — Interactive story about rookie F1 driver Gina Voss
+- **Standings** — Driver & Constructor standings for 2026 season
+- **Admin Panel** — Create/edit/delete articles, approve submissions, trigger auto-publish. Access at /admin
+- **Auto-Publish** — Daily scheduler 07:00 UTC generating 10 articles/day. Social posting to Discord/Facebook/Instagram
+- **Daily Points** — Claim points every 24 hours
 - **Live Viewer Counter** — SSE-based real-time connected viewer count in footer
-- **RSS Feed / Sitemap / robots.txt** — All hardcoded to https://www.f1fanhub.net
+- **RSS Feed / Sitemap / robots.txt** — Hardcoded to https://www.f1fanhub.net
+- **Jobs Board** — F1 industry job listings
+- **Submit Story** — Authenticated users can submit articles for admin approval
 
 ## Tech Stack
 - **Frontend**: React + TypeScript + Tailwind CSS + shadcn/ui

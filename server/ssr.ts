@@ -447,6 +447,7 @@ function buildCompleteHomepageHtml(articles: any[], bundles: BundleTags): string
         <nav class="hp-nav" aria-label="Main navigation">
           <a href="/articles">News</a>
           <a href="/standings">Standings</a>
+          <a href="/calendar">Calendar</a>
           <a href="/forum">Forum</a>
           <a href="/polls">Polls</a>
           <a href="/quiz">Quiz</a>

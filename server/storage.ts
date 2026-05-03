@@ -1,9 +1,9 @@
 import { db } from "./db";
-import { eq, desc, asc, and, sql, isNull } from "drizzle-orm";
+import { eq, desc, asc, and, sql, isNull, ilike, or } from "drizzle-orm";
 import {
   userProfile, races, quizQuestions, quizAttempts,
   forumPosts, forumComments, articles, articleComments, articleViews, novelProgress,
-  driverStandings, constructorStandings, polls, pollVotes,
+  driverStandings, constructorStandings, polls, pollVotes, newsletterSubscribers,
   type UserProfile, type Race, type QuizQuestion, type QuizAttempt,
   type ForumPost, type ForumComment, type Article, type ArticleComment,
   type NovelProgress, type InsertForumPost, type InsertForumComment,
@@ -115,6 +115,13 @@ export interface IStorage {
   deletePoll(id: number): Promise<boolean>;
   voteOnPoll(pollId: number, visitorId: string, optionIndex: number): Promise<boolean>;
   getVisitorVote(pollId: number, visitorId: string): Promise<number | null>;
+
+  // Search & Discovery
+  searchArticles(query: string): Promise<Array<{ id: number; title: string; slug: string | null; excerpt: string; imageUrl: string | null; tags: string[] | null; section: string; publishedAt: Date | null }>>;
+  getTrendingArticles(limit?: number): Promise<Array<{ id: number; title: string; slug: string | null; imageUrl: string | null; excerpt: string; tags: string[] | null; publishedAt: Date | null; viewCount: number }>>;
+
+  // Newsletter
+  subscribeNewsletter(email: string): Promise<{ success: boolean; message: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -895,6 +902,61 @@ export class DatabaseStorage implements IStorage {
       .from(pollVotes)
       .where(and(eq(pollVotes.pollId, pollId), eq(pollVotes.visitorId, visitorId)));
     return row?.optionIndex ?? null;
+  }
+
+  async searchArticles(query: string) {
+    const q = `%${query}%`;
+    return db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        slug: articles.slug,
+        excerpt: articles.excerpt,
+        imageUrl: articles.imageUrl,
+        tags: articles.tags,
+        section: articles.section,
+        publishedAt: articles.publishedAt,
+      })
+      .from(articles)
+      .where(and(eq(articles.status, "published"), or(ilike(articles.title, q), ilike(articles.excerpt, q))))
+      .orderBy(desc(articles.publishedAt))
+      .limit(10);
+  }
+
+  async getTrendingArticles(limit = 5) {
+    return db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        slug: articles.slug,
+        imageUrl: articles.imageUrl,
+        excerpt: articles.excerpt,
+        tags: articles.tags,
+        publishedAt: articles.publishedAt,
+        viewCount: sql<number>`cast(count(distinct ${articleViews.visitorId}) as int)`,
+      })
+      .from(articles)
+      .leftJoin(articleViews, eq(articleViews.articleId, articles.id))
+      .where(eq(articles.status, "published"))
+      .groupBy(articles.id)
+      .orderBy(sql`count(distinct ${articleViews.visitorId}) desc`)
+      .limit(limit);
+  }
+
+  async subscribeNewsletter(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const result = await db
+        .insert(newsletterSubscribers)
+        .values({ email })
+        .onConflictDoNothing()
+        .returning();
+      if (result.length === 0) {
+        return { success: false, message: "You're already subscribed!" };
+      }
+      return { success: true, message: "You're subscribed! Welcome to the paddock." };
+    } catch {
+      return { success: false, message: "Something went wrong. Please try again." };
+    }
   }
 }
 

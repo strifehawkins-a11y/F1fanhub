@@ -25,6 +25,7 @@ import TermsPage from "@/pages/TermsPage";
 import AboutPage from "@/pages/AboutPage";
 import SubmitStoryPage from "@/pages/SubmitStoryPage";
 import JobsPage from "@/pages/JobsPage";
+import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
 
@@ -57,6 +58,7 @@ function AuthenticatedApp() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/submit-story" component={SubmitStoryPage} />
         <Route path="/jobs" component={JobsPage} />
+        <Route path="/calendar" component={CalendarPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

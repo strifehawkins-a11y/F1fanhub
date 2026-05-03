@@ -12,6 +12,28 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import AdBanner from "@/components/AdBanner";
 
+function ReadingProgressBar() {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const update = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(docHeight > 0 ? Math.min(100, (scrollTop / docHeight) * 100) : 0);
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return (
+    <div
+      style={{
+        position: "fixed", top: 0, left: 0, height: "3px",
+        width: `${progress}%`, background: "hsl(var(--primary))",
+        zIndex: 99999, transition: "width 80ms linear", pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 function getCategoryFromTags(tags: string[] | null): string {
   if (!tags || tags.length === 0) return "NEWS";
   const t = tags[0].toUpperCase();
@@ -207,6 +229,7 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="min-h-screen">
+      <ReadingProgressBar />
       {/* ─── Cinematic Hero (break out of AppLayout padding) ─── */}
       <div
         className="relative w-full overflow-hidden -mx-4 sm:-mx-6 -mt-6"

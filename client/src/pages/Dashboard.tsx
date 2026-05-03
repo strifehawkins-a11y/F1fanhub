@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format, parseISO, differenceInDays, differenceInHours } from "date-fns";
-import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Edit2, X, Save, BarChart3, ChevronLeft } from "lucide-react";
+import { MessageSquare, Clock, ChevronRight, Zap, Flag, Trophy, Timer, Edit2, X, Save, BarChart3, ChevronLeft, TrendingUp, Flame, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Race, UserProfile, DriverStanding, ConstructorStanding } from "@shared/schema";
@@ -16,6 +16,120 @@ const BANNER_IMAGE = "/banner-bg.webp";
 function estimateReadTime(content: string) {
   const words = content?.split(/\s+/).length || 0;
   return Math.max(1, Math.round(words / 200));
+}
+
+const ON_THIS_DAY: Record<string, { year: number; fact: string }> = {
+  "01-19": { year: 1963, fact: "Jim Clark drove to victory in New Zealand, opening a legendary 1963 season." },
+  "02-01": { year: 1985, fact: "Ferrari officially revealed the car that would revive their championship challenge." },
+  "03-01": { year: 1992, fact: "Nigel Mansell obliterated the field in South Africa, starting a run of 5 consecutive wins." },
+  "03-07": { year: 2010, fact: "Seven-time champion Michael Schumacher returned to F1 with Mercedes after 3 years away." },
+  "03-24": { year: 1991, fact: "Ayrton Senna won the Brazilian GP in front of his home crowd — driving the final miles with a stuck gear." },
+  "04-06": { year: 1986, fact: "Ayrton Senna led every lap of the Brazilian GP in one of his most dominant drives." },
+  "04-12": { year: 1987, fact: "Nigel Mansell won San Marino for Williams, the first of 6 wins that year." },
+  "05-01": { year: 1994, fact: "Three-time champion Ayrton Senna tragically died following a crash at San Marino — F1's darkest day." },
+  "05-13": { year: 1950, fact: "Giuseppe Farina won the very first F1 World Championship race at Silverstone, driving an Alfa Romeo." },
+  "05-15": { year: 1988, fact: "Ayrton Senna produced a near-perfect drive to win at Monaco, lapping all but one rival." },
+  "05-23": { year: 2004, fact: "Michael Schumacher won Monaco for the 5th time, extending his record on the most famous street circuit." },
+  "06-04": { year: 1950, fact: "The Indianapolis 500 counted as an F1 World Championship round for the first time." },
+  "06-14": { year: 2015, fact: "Lewis Hamilton won the Canadian GP for the 4th time — his 41st career victory." },
+  "06-21": { year: 1970, fact: "Jochen Rindt won the Dutch GP — he would later become F1's only posthumous World Champion." },
+  "07-04": { year: 1976, fact: "James Hunt won his home British GP at Brands Hatch in his championship-winning season." },
+  "07-14": { year: 2019, fact: "Lewis Hamilton won the British GP for the 6th time, closing in on Senna's all-time Silverstone record." },
+  "07-18": { year: 2021, fact: "Hamilton won a controversial British GP after colliding with Verstappen, who was hospitalised." },
+  "07-25": { year: 2021, fact: "Esteban Ocon claimed a shock first career victory in a chaotic Hungarian GP." },
+  "08-01": { year: 1976, fact: "Niki Lauda suffered near-fatal burns at the Nürburgring in one of the most dramatic moments in F1 history." },
+  "08-28": { year: 2022, fact: "Max Verstappen won the Belgian GP from 14th on the grid in a dominant wet-dry strategy masterclass." },
+  "09-01": { year: 2019, fact: "Charles Leclerc won the Belgian GP — Ferrari's first win in 4 years — days after the death of his friend Anthoine Hubert." },
+  "09-06": { year: 2020, fact: "Pierre Gasly delivered a stunning upset win at Monza in his AlphaTauri, beating McLaren by 0.4 seconds." },
+  "09-11": { year: 1988, fact: "Gerhard Berger won at Monza — Ferrari's only win of 1988 as McLaren's dominant season was briefly interrupted." },
+  "09-12": { year: 2021, fact: "Verstappen won the Dutch GP in front of 70,000 orange-clad fans at a revived Zandvoort." },
+  "09-18": { year: 2022, fact: "Verstappen won at Suzuka to clinch his second World Championship with 4 races to spare." },
+  "09-28": { year: 1997, fact: "Schumacher collided with Villeneuve in the European GP — costing him the title and leading to his expulsion from the standings." },
+  "10-01": { year: 1978, fact: "Mario Andretti clinched the World Championship — still the last American to win the F1 title." },
+  "10-08": { year: 2000, fact: "Schumacher won the title for Ferrari, ending their 21-year wait for a drivers' championship." },
+  "10-16": { year: 1994, fact: "Michael Schumacher became 1994 World Champion after a controversial collision with Damon Hill in Adelaide." },
+  "10-21": { year: 2023, fact: "Max Verstappen sealed his third consecutive title at the United States GP with 6 races still to run." },
+  "10-25": { year: 1998, fact: "Mika Häkkinen clinched the World Championship at Suzuka — McLaren's first title since 1991." },
+  "11-02": { year: 2008, fact: "Lewis Hamilton won his first World Championship at the Brazilian GP, overtaking Glock on the final corner to clinch it by 1 point." },
+  "11-04": { year: 2007, fact: "Kimi Räikkönen won the title at Brazil — winning from 3rd in the standings going into the final race." },
+  "11-14": { year: 2010, fact: "Sebastian Vettel became the youngest World Champion ever, winning the title on the final lap in Abu Dhabi." },
+  "11-15": { year: 2020, fact: "Lewis Hamilton equalled Schumacher's record of 7 World Championships at the Turkish GP." },
+  "11-24": { year: 2024, fact: "Max Verstappen clinched his fourth consecutive World Championship at the Abu Dhabi finale." },
+  "11-25": { year: 2012, fact: "Sebastian Vettel staged an incredible comeback at Brazil — recovering from a first-lap puncture to win his 3rd title." },
+  "12-12": { year: 2021, fact: "Verstappen passed Hamilton on the final lap in Abu Dhabi to win his maiden title in one of F1's most controversial finales." },
+};
+
+function getOnThisDayFact() {
+  const today = new Date();
+  const key = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (ON_THIS_DAY[key]) return { ...ON_THIS_DAY[key], date: key };
+  // Fall back to a rotating fact based on day of year
+  const keys = Object.keys(ON_THIS_DAY);
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+  const fallbackKey = keys[dayOfYear % keys.length];
+  return { ...ON_THIS_DAY[fallbackKey], date: fallbackKey };
+}
+
+function MostReadWidget() {
+  const { data: trending, isLoading } = useQuery<any[]>({ queryKey: ["/api/articles/trending"] });
+  if (isLoading) return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+    </div>
+  );
+  if (!trending || trending.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <Flame className="w-4 h-4 text-primary" />
+        <span className="font-racing text-xs font-black text-gray-900 tracking-widest uppercase">Most Read</span>
+      </div>
+      <ol className="space-y-3">
+        {trending.map((a: any, i: number) => (
+          <li key={a.id}>
+            <Link href={`/articles/${a.slug || a.id}`}>
+              <div data-testid={`most-read-${a.id}`} className="flex items-start gap-3 group cursor-pointer">
+                <span className="font-racing text-lg font-black text-gray-200 leading-none w-5 flex-shrink-0 pt-0.5">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-racing text-xs font-bold text-gray-800 line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                    {a.title}
+                  </p>
+                  {a.viewCount > 0 && (
+                    <p className="font-racing text-[9px] text-gray-400 mt-0.5 tracking-wide">
+                      {a.viewCount.toLocaleString()} {a.viewCount === 1 ? "view" : "views"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function OnThisDayWidget() {
+  const fact = getOnThisDayFact();
+  const [month, day] = fact.date.split("-");
+  const monthName = new Date(2000, Number(month) - 1, 1).toLocaleString("default", { month: "long" });
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <History className="w-4 h-4 text-primary" />
+        <span className="font-racing text-xs font-black text-gray-900 tracking-widest uppercase">On This Day in F1</span>
+      </div>
+      <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
+        <div className="flex items-baseline gap-2 mb-2">
+          <span className="font-racing text-2xl font-black text-primary leading-none">{fact.year}</span>
+          <span className="font-racing text-[10px] text-gray-400 tracking-wide">
+            {monthName} {Number(day)}
+          </span>
+        </div>
+        <p className="font-racing text-xs text-gray-700 leading-relaxed">{fact.fact}</p>
+      </div>
+    </div>
+  );
 }
 
 function getCategoryFromTags(tags: string[] | null): string {
@@ -1011,6 +1125,8 @@ export default function Dashboard() {
             {races && <NextRaceWidget races={races} profile={profile} />}
             <PollsWidget />
             <AdBanner variant="square" />
+            <MostReadWidget />
+            <OnThisDayWidget />
           </div>
         </div>
       </div>

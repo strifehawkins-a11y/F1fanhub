@@ -162,6 +162,13 @@ export const constructorStandings = pgTable("constructor_standings", {
   season: integer("season").default(2026).notNull(),
 });
 
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  subscribedAt: timestamp("subscribed_at").defaultNow(),
+  active: boolean("active").default(true).notNull(),
+});
+
 export const insertForumPostSchema = createInsertSchema(forumPosts).omit({ id: true, createdAt: true });
 export const insertForumCommentSchema = createInsertSchema(forumComments).omit({ id: true, createdAt: true });
 export const insertArticleSchema = createInsertSchema(articles).omit({ id: true, publishedAt: true, updatedAt: true });
@@ -186,6 +193,7 @@ export type PollVote = typeof pollVotes.$inferSelect;
 export type NovelProgress = typeof novelProgress.$inferSelect;
 export type DriverStanding = typeof driverStandings.$inferSelect;
 export type ConstructorStanding = typeof constructorStandings.$inferSelect;
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 
 export type InsertForumPost = z.infer<typeof insertForumPostSchema>;
 export type InsertForumComment = z.infer<typeof insertForumCommentSchema>;

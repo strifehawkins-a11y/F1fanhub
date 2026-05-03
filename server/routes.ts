@@ -461,6 +461,15 @@ ${items}  </channel>
     }
   });
 
+  app.get("/api/articles/trending", async (_req, res) => {
+    try {
+      const trending = await storage.getTrendingArticles(5);
+      res.json(trending);
+    } catch {
+      res.json([]);
+    }
+  });
+
   app.get("/api/articles/pending", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -980,6 +989,28 @@ ${items}  </channel>
     } catch (err) {
       res.status(500).json({ message: "Failed to update race" });
     }
+  });
+
+  // ---- SEARCH ----
+  app.get("/api/search", async (req, res) => {
+    const q = ((req.query.q as string) || "").trim();
+    if (q.length < 2) return res.json({ articles: [] });
+    try {
+      const results = await storage.searchArticles(q);
+      res.json({ articles: results });
+    } catch {
+      res.json({ articles: [] });
+    }
+  });
+
+  // ---- NEWSLETTER SUBSCRIBE ----
+  app.post("/api/newsletter", async (req, res) => {
+    const { email } = req.body || {};
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+    const result = await storage.subscribeNewsletter(email.trim().toLowerCase());
+    res.json(result);
   });
 
   // Seed the database on startup
